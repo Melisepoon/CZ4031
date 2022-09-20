@@ -2,6 +2,19 @@
 
 To compile and run C++ on VSCode
 
+- Can follow ths link to install https://code.visualstudio.com/docs/languages/cpp
+
+- After install, define the `tasks.json` file with corresponding `args` to include all C++ files:
+
+  ```
+  "tasks": [
+    {
+      "args": ["-g", "${workspaceFolder}\\*.cpp", "-o", "${fileDirname}\\${fileBasenameNoExtension}.exe"],
+    }
+  ]
+
+- `cd` to `main.cpp` under the `src` folder and compile the executable.
+
 1) Install MinGW http://bit.ly/mingw10
 
 2) Unzip and install MinGW in the C:/ folder
