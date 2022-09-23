@@ -60,11 +60,13 @@ int main(){
             Address tempAddress = disk.saveToDisk(&tempRecord, sizeof(tempRecord));
 
             //Build the bplustree as we insert records
-        //    tree.insert(tempRecord->numVotes);
+            tree.insert(tempAddress, tempRecord.numVotes);
 
             //Uncomment to see each data record
-            //std::cout << tempRecord.tconst << "---"<< tempRecord.averageRating <<"---"<< tempRecord.numVotes << std::endl;
-            //std::cout << "Inserted record " << recordCount + 1 << " at block address: " << tempAddress.blockAddress << " and index " << tempAddress.index << std::endl;
+            std::cout << tempRecord.tconst << "---"<< tempRecord.averageRating <<"---"<< tempRecord.numVotes << std::endl;
+            std::cout << "Inserted record " << recordCount + 1 << " at block address: " << tempAddress.blockAddress << " and index " << tempAddress.index << std::endl;
+            tree.displayTree(tree.getRoot(),tree.getHeight());
+            std::cout << std::endl;
             recordCount += 1;
         }
     }
@@ -74,5 +76,5 @@ int main(){
     std::cout << "Data Blocks Count: " << disk.getBlocksAllocated() << std::endl; 
     std::cout << "Total Records Count: " << recordCount << std::endl;
 
-
+    return 0;
 }

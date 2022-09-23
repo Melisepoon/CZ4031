@@ -1,14 +1,14 @@
 #ifndef TYPES_H
 #define TYPES_H
 
-// Defines the address for a record
+// Defines the address, size: 16B
 struct Address
 {
     void *blockAddress;
     short int index;
 };
 
-// Defines the strcuture for a single record
+// Defines the strcuture for a single record, size 20B
 struct Record
 {
     /* data */

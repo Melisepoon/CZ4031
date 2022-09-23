@@ -14,22 +14,24 @@ private:
     MemoryPool *disk;           // Pointer to the memory pool for the data
     MemoryPool *index;          // Pointer to the memory pool for the index created
     TreeNode *root;             // Pointer to the root of the b+ tree
+    void *rootAddress;
     std::size_t blockSize;      // Size for each block in the b+ tree 200B/500B
 
     int height;                 // Height of the b+ tree
     int numOfNodes;             // Total number of nodes in the b+tree
     int maxKeys;                // Maximum number of keys in each node
     
-    void insertInternal(int value, TreeNode *current, TreeNode *child);
-    TreeNode *findParent(TreeNode *current, TreeNode *child);
-    int findParentValue(TreeNode *current);
-    void revomeInternal(int value, TreeNode *current, TreeNode *child);
+    void insertInternal(int value, TreeNode *currentDiskAddress, TreeNode *childDiskAddress);
+    void removeInternal(int value, TreeNode *currentDiskAddress, TreeNode *childDiskAddress);
+    TreeNode *findParent(TreeNode *currentDiskAddress, TreeNode *childDiskAddress, int value);
 
 public:
 
     BPlusTree(std::size_t blockSize, MemoryPool *disk, MemoryPool *index);
 
     TreeNode *getRoot(){return root;};
+
+    void*getRootAddress(){return rootAddress;};
     
     int getMaxKeys(){return maxKeys;};
     
@@ -39,11 +41,19 @@ public:
     
     int calculateMaxKeys(std::size_t blockSize);
 
-    void insert(int value);
+    void displayTree(TreeNode *current, int height);
+
+    void displayNode(TreeNode *current);
+
+    void insert(Address recordAddress, int value);
+
+    Address insertLL(Address LLHead, Address address, int value);
 
     void remove(int value);
 
     void search(int leftValue, int righValue);
+
+    void getFirstLeaf();
 
 };
 

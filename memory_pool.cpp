@@ -41,10 +41,10 @@ bool MemoryPool::allocateBlock()
 };
 
 /**
- * Function to allocate an address for a record in a block
- * @return The Address of the record
+ * Function to allocate an space in a block
+ * @return The Address of allocated
  */
-Address MemoryPool::allocateRecord(std::size_t size)
+Address MemoryPool::allocate(std::size_t size)
 {
     if (size > blockSize)
     {
@@ -122,7 +122,7 @@ void *MemoryPool::loadFromDisk(Address address, std::size_t size)
  */
 Address MemoryPool::saveToDisk(void *itemAddress, std::size_t size)
 {
-    Address diskAddress = MemoryPool::allocateRecord(size);
+    Address diskAddress = MemoryPool::allocate(size);
     std::memcpy((char *)diskAddress.blockAddress + diskAddress.index, itemAddress, size);
 
     blocksAccessed ++;
@@ -131,7 +131,7 @@ Address MemoryPool::saveToDisk(void *itemAddress, std::size_t size)
 }
 
 // Function to update a record to the disk
-void MemoryPool::saveToDisk(void *itemAddress, std::size_t size, Address address)
+Address MemoryPool::saveToDisk(void *itemAddress, std::size_t size, Address address)
 {
     std::memcpy((char *)address.blockAddress + address.index, itemAddress, size);
 }

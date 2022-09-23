@@ -117,7 +117,7 @@ public:
 
     bool allocateBlock();
 
-    Address allocateRecord(std::size_t size);
+    Address allocate(std::size_t size);
 
     bool deallocateRecord(Address address, std::size_t size);
 
@@ -125,7 +125,7 @@ public:
 
     Address saveToDisk(void *itemAddress, std::size_t size);
 
-    void saveToDisk(void *itemAddress, std::size_t size, Address address);
+    Address saveToDisk(void *itemAddress, std::size_t size, Address address);
 
     ~MemoryPool();
 
