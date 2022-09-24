@@ -134,6 +134,9 @@ Address MemoryPool::saveToDisk(void *itemAddress, std::size_t size)
 Address MemoryPool::saveToDisk(void *itemAddress, std::size_t size, Address address)
 {
     std::memcpy((char *)address.blockAddress + address.index, itemAddress, size);
+    blocksAccessed++;
+
+    return address;
 }
 
 /** Function to calculate the maximum number of records in a block

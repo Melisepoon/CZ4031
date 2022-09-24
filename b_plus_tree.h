@@ -53,7 +53,7 @@ public:
 
     void search(int leftValue, int righValue);
 
-    void getFirstLeaf();
+    Address getFirstLeaf(Address current);
 
 };
 

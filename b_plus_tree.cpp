@@ -35,6 +35,7 @@ void BPlusTree::insert(Address recordAddress, int value)
   {
     // Create a new tree node
     TreeNode *node = new TreeNode(maxKeys);
+
     node->setKey(0, value);
     node->setNumOfKeys(1);
     node->setIsLeaf(true);
@@ -45,7 +46,8 @@ void BPlusTree::insert(Address recordAddress, int value)
 
     // Keep track of root node and root node's disk address.
     this->root = node;
-    rootAddress = &nodeAddress;
+    rootAddress = nodeAddress.blockAddress;
+    height = 1;
   }
   // Else if root exists already, traverse the nodes to find the proper place to insert the key.
   else
@@ -165,7 +167,7 @@ void BPlusTree::insert(Address recordAddress, int value)
 
       // We only need to store pointers corresponding to records (ignore those that points to other nodes).
       // Those that point to other nodes can be manipulated by themselves without this array later.
-      Address tempPointerList[maxKeys + 1];
+      Address tempPointerList[maxKeys + 2];
       Address next = current->getPointer(current->getNumOfKeys());
 
       // Copy all keys and pointers to the temporary lists.
@@ -175,6 +177,7 @@ void BPlusTree::insert(Address recordAddress, int value)
         tempKeyList[i] = current->getKey(i);
         tempPointerList[i] = current->getPointer(i);
       }
+      //tempPointerList[maxKeys] = current->getPointer(maxKeys);
 
       // Insert the new key into the temp key list, making sure that it remains sorted. Here, we find where to insert it.
       i = 0;
@@ -223,7 +226,7 @@ void BPlusTree::insert(Address recordAddress, int value)
       newLeaf->setIsLeaf(true); // New node is a leaf node.
 
       // Split the two new nodes into two. ⌊(n+1)/2⌋ keys for left, n+1 - ⌊(n+1)/2⌋ (aka remaining) keys for right.
-      current->setNumOfKeys(ceil((maxKeys + 1) / 2));
+      current->setNumOfKeys(ceil((float(maxKeys) + 1) / 2));
       newLeaf->setNumOfKeys(floor((maxKeys + 1) / 2));
 
       // Set the last pointer of the new leaf node to point to the previous last pointer of the existing node (current).
@@ -355,7 +358,7 @@ void BPlusTree::insertInternal(int value, TreeNode *currentDiskAddress, TreeNode
   }
   // If parent node doesn't have space, we need to recursively split parent node and insert more parent nodes.
   else
-  {
+  { 
     // Make new internal node (split this parent node into two).
     // Note: We DO NOT add a new key, just a new pointer!
     TreeNode *newInternal = new TreeNode(maxKeys);
@@ -408,17 +411,22 @@ void BPlusTree::insertInternal(int value, TreeNode *currentDiskAddress, TreeNode
 
     // Split the two new nodes into two. ⌊(n)/2⌋ keys for left.
     // For right, we drop the rightmost key since we only need to represent the pointer.
-    current->setNumOfKeys(ceil((maxKeys + 1) / 2));
-    newInternal->setNumOfKeys(floor((maxKeys + 1) / 2));
+    current->setNumOfKeys((maxKeys + 1) / 2);
+    newInternal->setNumOfKeys((maxKeys + 1) / 2);
 
     // Reassign keys into current from tempkeyslist to account for new child node
     for (int i = 0; i < current->getNumOfKeys(); i++)
     {
       current->setKey(i, tempKeyList[i]);
     }
+
+    for (int i = 0; i <= current->getNumOfKeys(); i++)
+    {
+      current->setPointer(i, tempPointerList[i]);
+    }
     
     // Insert new keys into the new internal parent node.
-    for (i = 0, j = current->getNumOfKeys() + 1; i < newInternal->getNumOfKeys(); i++, j++)
+    for (i = 0, j = current->getNumOfKeys()+1; i < newInternal->getNumOfKeys(); i++, j++)
     {
       newInternal->setKey(i, tempKeyList[j]);
     }
@@ -447,7 +455,7 @@ void BPlusTree::insertInternal(int value, TreeNode *currentDiskAddress, TreeNode
     }
 
     // assign the new child to the original parent
-    current->setPointer(current->getNumOfKeys(), childAddress);
+ //   current->setPointer(current->getNumOfKeys(), childAddress);
 
     // Save the old parent and new internal node to disk.
     Address currentAddress{currentDiskAddress, 0};
@@ -463,7 +471,10 @@ void BPlusTree::insertInternal(int value, TreeNode *currentDiskAddress, TreeNode
       // Update newRoot to hold the children.
       // Take the rightmost key of the old parent to be the root.
       // Although we threw it away, we are still using it to denote the leftbound of the old child.
-      newRoot->setKey(0, current->getKey(current->getNumOfKeys()));
+      //newRoot->setKey(0, current->getKey(current->getNumOfKeys()));
+      Address firstLeafNodeAddress = getFirstLeaf(newInternalDiskAddress);
+      TreeNode *firstLeafNode = (TreeNode *)index->loadFromDisk(firstLeafNodeAddress, blockSize);
+      newRoot->setKey(0, firstLeafNode->getKey(0));
 
       // Update newRoot's children to be the previous two nodes
       Address currentAddress = {currentDiskAddress, 0};
@@ -693,7 +704,17 @@ void BPlusTree::displayNode(TreeNode *current)
   std::cout << std::endl;
 };
 
-void BPlusTree::getFirstLeaf()
+Address BPlusTree::getFirstLeaf(Address current)
 {
-    
+  Address nullAddress = {nullptr, 0};
+  if(current.blockAddress == nullptr){
+    return nullAddress;
+  }else{
+      TreeNode *leafNode = (TreeNode *)index->loadFromDisk(current, blockSize);
+      while(!leafNode->getIsLeaf()){
+        leafNode=(TreeNode *)leafNode->getPointer(0).blockAddress;
+      }
+      Address leafNodeAddress = {leafNode, 0};
+      return (leafNodeAddress);
+  }
 };

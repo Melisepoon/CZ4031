@@ -20,6 +20,11 @@ public:
         pointers = new Address[maxKeys + 1];
         numOfKeys = 0;
         isLeaf = false;
+        Address nullAddress = {nullptr,0};
+        for (int i = 0; i < maxKeys + 1; i++)
+        {
+            setPointer(i,nullAddress);
+        }
     };
 
     int getKey(int index){return keys[index];};

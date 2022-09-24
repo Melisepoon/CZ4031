@@ -63,11 +63,25 @@ int main(){
             tree.insert(tempAddress, tempRecord.numVotes);
 
             //Uncomment to see each data record
-            std::cout << tempRecord.tconst << "---"<< tempRecord.averageRating <<"---"<< tempRecord.numVotes << std::endl;
-            std::cout << "Inserted record " << recordCount + 1 << " at block address: " << tempAddress.blockAddress << " and index " << tempAddress.index << std::endl;
-            tree.displayTree(tree.getRoot(),tree.getHeight());
-            std::cout << std::endl;
+            if (recordCount >= 300){
+                std::cout << tempRecord.tconst << "---"<< tempRecord.averageRating <<"---"<< tempRecord.numVotes << std::endl;
+                std::cout << "Inserted record " << recordCount + 1 << " at block address: " << tempAddress.blockAddress << " and index " << tempAddress.index << std::endl;
+                tree.displayTree(tree.getRoot(),tree.getHeight());
+                std::cout << std::endl;
+                
+                if (recordCount == 310)
+                {break;}
+            }
             recordCount += 1;
+
+            // if(tree.getHeight()==3){
+            //     std::cout << "============================================================================" << std::endl;
+            // }
+
+            // if (recordCount==51){
+            //     std::cout << "prblem here" << std::endl;
+            // }
+            
         }
     }
 
