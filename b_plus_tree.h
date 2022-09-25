@@ -58,6 +58,8 @@ public:
 
     void remove(int value);
 
+    void removeLL(Address LLHeadAddress);
+
     void search(int leftValue, int righValue);
 
     Address getFirstLeaf(Address current);

@@ -32,10 +32,11 @@ int main(){
         }
     }
     std::cout << "Block size selected: " << BLOCKSIZE << std::endl;
+    std::cout << std::endl;
     std::cout << "=============================Creating Memory Pool=============================" << std::endl;
 
     MemoryPool disk(200000000, (std::size_t)BLOCKSIZE); //200MB
-    MemoryPool index(500000000, (std::size_t)BLOCKSIZE); //500MB
+    MemoryPool index(200000000, (std::size_t)BLOCKSIZE); //500MB
 
     BPlusTree tree = BPlusTree(BLOCKSIZE, &disk, &index);
     std::cout << "Max records per block: " << disk.getMaxRecords() << std::endl;
@@ -74,7 +75,7 @@ int main(){
             // if (recordCount >= 100000){
                 // std::cout << tempRecord.tconst << "---"<< tempRecord.averageRating <<"---"<< tempRecord.numVotes << std::endl;
             //     std::cout << "Inserted record " << recordCount + 1 << " at block address: " << tempAddress.blockAddress << " and index " << tempAddress.index << std::endl;
-                // tree.displayTree(tree.getRoot(),tree.getHeight());
+                // tree.displayTree(tree.getRoot(),1);
                 // tree.displayNode(tree.getRoot());
             //     std::cout << std::endl;
                 
@@ -98,7 +99,7 @@ int main(){
             //     std::cout << tree.getHeight() << std::endl;
             //     std::cout << std::endl;
             // }
-            // if (recordCount == 1540)
+            // if (recordCount == 170)
             // {
             //     break;
             // }
@@ -111,13 +112,83 @@ int main(){
     // tree.displayTree(tree.getRoot(), 0);
     // std::cout << tree.getNumOfNodes() << std::endl;
     // std::cout << tree.getHeight() << std::endl;
+    // tree.displayTree(tree.getRoot(), 1);
+    // tree.remove(430);
 
+    // tree.displayTree(tree.getRoot(), 1);
     // tree.search(18,19);
 
     std::cout << "Memory pool created with:" << std::endl;
     std::cout << "Block size: " << BLOCKSIZE << "B" << std::endl;
-    std::cout << "Data Blocks Count: " << disk.getBlocksAllocated() << std::endl; 
     std::cout << "Total Records Count: " << recordCount << std::endl;
+    std::cout << std::endl;
+
+    std::cout << "=============================Experimet 1=============================" << std::endl;
+    std::cout << "Data Blocks Count: " << disk.getBlocksAllocated() << std::endl;
+    std::cout << "Size of DataBase: " << BLOCKSIZE*disk.getBlocksAllocated() << " MB" << std::endl;
+    std::cout << std::endl;
+
+    std::cout << "=============================Experimet 2=============================" << std::endl;
+    std::cout << "Parameter n of the B+ Tree: " << tree.getMaxKeys() << std::endl;
+    std::cout << "The Number of nodes of the B+ Tree: " << tree.getNumOfNodes() << std::endl;
+    tree.calculateHeight({tree.getRootAddress(), tree.getRootIndex()}, 1);
+    std::cout << "The height of the B+ Tree: " << tree.getHeight() << std::endl;
+    std::cout << "The content of the root node: " << std::endl;
+    tree.displayNode(tree.getRoot());
+    std::cout << "The content of the root node's 1st child node: " <<  std::endl;
+    TreeNode *rootNode = tree.getRoot();
+    Address childNodeAddress = rootNode->getPointer(0);
+    TreeNode *childNode = (TreeNode *)index.loadFromDisk(childNodeAddress,sizeof(*rootNode));
+    tree.displayNode(childNode);
+    std::cout << std::endl;
+
+    std::cout << "=============================Experimet 3=============================" << std::endl;
+    tree.search(500,500);
+    std::cout << "The number of index nodes accessed: " << std::endl;
+
+    std::cout << "The content of the index nodes accessed: " << std::endl;
+
+    std::cout << "The number of data blocks accessed: " << std::endl;
+    
+    std::cout << "The Content of the data blocks accessed: " << std::endl;
+
+    std::cout << "The Average of \"averageRating's\": " << std::endl;
+
+    std::cout << std::endl;
+
+    std::cout << "=============================Experimet 4=============================" << std::endl;
+    tree.search(30000,40000);
+    std::cout << "The number of index nodes accessed: " << std::endl;
+
+    std::cout << "The content of the index nodes accessed: " << std::endl;
+
+    std::cout << "The number of data blocks accessed: " << std::endl;
+    
+    std::cout << "The Content of the data blocks accessed: " << std::endl;
+
+    std::cout << "The Average of \"averageRating's\": " << std::endl;
+
+    std::cout << std::endl;
+
+    std::cout << "=============================Experimet 5=============================" << std::endl;
+    tree.remove(1000);
+    std::cout << "The number of times that a node is deleted: " << std::endl;
+
+    std::cout << "The number nodes: " << std::endl;
+
+    tree.calculateHeight({tree.getRootAddress(), tree.getRootIndex()}, 1);
+    std::cout << "The height of the B+ Tree: " << tree.getHeight() << std::endl;
+    std::cout << "The content of the root node: " << std::endl;
+    tree.displayNode(tree.getRoot());
+    std::cout << "The content of the root node's 1st child node: " <<  std::endl;
+    TreeNode *newRootNode = tree.getRoot();
+    Address newChildNodeAddress = rootNode->getPointer(0);
+    TreeNode *newChildNode = (TreeNode *)index.loadFromDisk(newChildNodeAddress,sizeof(*newRootNode));
+    tree.displayNode(newChildNode);
+    std::cout << std::endl;
+
+    std::cout << "=============================End=============================" << std::endl;
+
 
     return 0;
 }

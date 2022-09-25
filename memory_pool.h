@@ -119,7 +119,7 @@ public:
 
     Address allocate(std::size_t size);
 
-    bool deallocateRecord(Address address, std::size_t size);
+    bool deallocate(Address address, std::size_t size);
 
     void *loadFromDisk(Address address, std::size_t size);
 

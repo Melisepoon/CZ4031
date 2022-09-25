@@ -75,7 +75,7 @@ Address MemoryPool::allocate(std::size_t size)
  * @param size The size of the record
  * @return Ture if can deallocated. False if cannot.
  */
-bool MemoryPool::deallocateRecord(Address address, std::size_t size)
+bool MemoryPool::deallocate(Address address, std::size_t size)
 {
     try
     {
