@@ -45,7 +45,7 @@ public:
      * Function to get the block size of the memory pool
      * @return The block size of this memory pool
      */
-    std::size_t getBlcokSize()
+    std::size_t getBlockSize()
     {
         return blockSize;
     }

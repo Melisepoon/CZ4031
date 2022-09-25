@@ -26,7 +26,7 @@ int BPlusTree::calculateMaxKeys(std::size_t blockSize)
     return maxKeys;
 };
 
-// Code for inseting
+// Code for inserting
 
 void BPlusTree::insert(Address recordAddress, int value)
 {
