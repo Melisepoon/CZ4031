@@ -127,7 +127,8 @@ void BPlusTree::insert(Address recordAddress, int value)
       {
         // If it's a duplicate, linked list already exists. Insert into linked list.
         // Insert and update the linked list head.
-        current->getPointer(i) = insertLL(current->getPointer(i), recordAddress, value);
+        
+        current->setPointer(i, insertLL(current->getPointer(i), recordAddress, value));
       }
       else
       {
@@ -209,7 +210,7 @@ void BPlusTree::insert(Address recordAddress, int value)
         {
           // If it's a duplicate, linked list already exists. Insert into linked list.
           // Insert and update the linked list head.
-          current->getPointer(i) = insertLL(current->getPointer(i), recordAddress, value);
+          current->setPointer(i, insertLL(current->getPointer(i), recordAddress, value));
           return;
         } 
       }
@@ -550,6 +551,14 @@ Address BPlusTree::insertLL(Address LLHead, Address address, int value)
     // Write head back to disk.
     LLHead = index->saveToDisk((void *)head, sizeof(* root), LLHead);
 
+    // displayNode(head);
+    //   if(head->getPointer(head->getNumOfKeys()).blockAddress){
+    //     Address innerPrintNode = head->getPointer(head->getNumOfKeys());
+    //     TreeNode *innerPrintNod = (TreeNode *)index->loadFromDisk(innerPrintNode,sizeof(* root));
+    //     std::cout << "continue: " ;
+    //     displayNode(innerPrintNod);
+    //   }
+
     // Return head address
     return LLHead;
   }
@@ -569,6 +578,17 @@ Address BPlusTree::insertLL(Address LLHead, Address address, int value)
 
     // Write new linked list node to disk.
     Address LLNodeAddress = index->saveToDisk((void *)LLNode, sizeof(* root));
+
+    // for (int i = 0; i < LLNode->getNumOfKeys(); i ++)
+    // {
+    //   displayNode(LLNode);
+    //     if(LLNode->getPointer(LLNode->getNumOfKeys()).blockAddress){
+    //       Address innerPrintNode = LLNode->getPointer(LLNode->getNumOfKeys());
+    //       TreeNode *innerPrintNod = (TreeNode *)index->loadFromDisk(innerPrintNode,sizeof(* root));
+    //       std::cout << "continue: " ;
+    //       displayNode(innerPrintNod);
+    //     }
+    // }
 
     // Return disk address of new linked list head
     return LLNodeAddress;
@@ -707,7 +727,7 @@ void BPlusTree::search(int leftValue, int rightValue)
   else
   {
     // Load in root from disk.
-    Address rootDiskAddress{rootAddress, 0};
+    Address rootDiskAddress{rootAddress, rootIndex};
     root = (TreeNode *)index->loadFromDisk(rootDiskAddress, sizeof(* root));
 
     // for displaying to output file
@@ -773,7 +793,7 @@ void BPlusTree::search(int leftValue, int rightValue)
         if (current->getKey(i) >= leftValue && current->getKey(i) <= rightValue)
         {
           // for displaying to output file
-          std::cout << "Index node (LLNode) accessed. Content is -----";
+          std::cout << "Leaf Node content is -----";
           displayNode(current);
 
           // Add new line for each leaf node's linked list printout.
@@ -784,25 +804,52 @@ void BPlusTree::search(int leftValue, int rightValue)
           displayLL(current->getPointer(i));
         }
       }
-
-      // On the last pointer, check if last key is max, if it is, stop. Also stop if it is already equal to the max
-      if (current->getPointer(current->getNumOfKeys()).blockAddress != nullptr && current->getKey(i) != rightValue)
+      while (current->getKey(current->getNumOfKeys()-1)< rightValue)
       {
-        // Set current to be next leaf node (load from disk).
-        current = (TreeNode *)index->loadFromDisk(current->getPointer(current->getNumOfKeys()), sizeof(* root));
+        Address nextNodeAddress = current->getPointer(current->getNumOfKeys());
+        TreeNode *nextNode = (TreeNode *)index->loadFromDisk(nextNodeAddress, sizeof(*root));
+        current = nextNode;
+        for (i = 0; i < current->getNumOfKeys(); i++)
+        {
+          // Found a key within range, now we need to iterate through the entire range until the upperBoundKey.
+          if (current->getKey(i) > rightValue)
+          {
+            stop = true;
+            break;
+          }
+          if (current->getKey(i) >= leftValue && current->getKey(i) <= rightValue)
+          {
+            // for displaying to output file
+            std::cout << "Leaf Node content is -----";
+            displayNode(current);
 
-        // for displaying to output file
-        std::cout << "Index node accessed. Content is -----";
-        displayNode(current);
+            // Add new line for each leaf node's linked list printout.
+            std::cout << std::endl;
+            std::cout << "LLNode: tconst for number of votes: " << current->getKey(i) << " > ";          
 
+            // Access the linked list node and print records.
+            displayLL(current->getPointer(i));
+          }
+        }
       }
-      else
-      {
-        stop = true;
-      }
+
+      // // On the last pointer, check if last key is max, if it is, stop. Also stop if it is already equal to the max
+      // if (current->getPointer(current->getNumOfKeys()).blockAddress != nullptr && current->getKey(i) != rightValue)
+      // {
+      //   // Set current to be next leaf node (load from disk).
+      //   current = (TreeNode *)index->loadFromDisk(current->getPointer(current->getNumOfKeys()), sizeof(* root));
+
+      //   // for displaying to output file
+      //   std::cout << "Index node accessed. Content is -----";
+      //   displayNode(current);
+
+      // }
+      // else
+      // {
+      //   stop = true;
+      // }
     }
   }
-  return;
 };
 
 // Code for displaying the tree
@@ -844,22 +891,22 @@ void BPlusTree::displayNode(TreeNode *current)
   std::cout << "|";
   for (int i = 0; i < current->getNumOfKeys(); i++)
   {
-    std::cout << current->getPointer(i).blockAddress << "" << current->getPointer(i).index << " | ";
+    // std::cout << current->getPointer(i).blockAddress << "" << current->getPointer(i).index << " | ";
     std::cout << current->getKey(i) << " | ";
   }
 
   // Print last filled pointer
-  if (current->getPointer(current->getNumOfKeys()).blockAddress == nullptr) {
-    std::cout << " Null |";
-  }
-  else {
-    std::cout << current->getPointer(current->getNumOfKeys()).blockAddress << "" << current->getPointer(i).index << "|";
-  }
+  // if (current->getPointer(current->getNumOfKeys()).blockAddress == nullptr) {
+  //   std::cout << " Null |";
+  // }
+  // else {
+  //   std::cout << current->getPointer(current->getNumOfKeys()).blockAddress << "" << current->getPointer(i).index << "|";
+  // }
 
   for (int i = current->getNumOfKeys(); i < maxKeys; i++)
   {
     std::cout << " x |";      // Remaining empty keys
-    std::cout << "  Null  |"; // Remaining empty pointers
+    // std::cout << "  Null  |"; // Remaining empty pointers
   }
 
   std::cout << std::endl;
@@ -919,6 +966,9 @@ void BPlusTree::displayLL(Address address)
   // Load linked list head into main memory.
   TreeNode *head = (TreeNode *)index->loadFromDisk(address, sizeof(* root));
 
+  std::cout << "\nData block accessed. Content is -----";
+  displayNode(head);
+  std::cout << std::endl;
   // Print all records in the linked list.
   for (int i = 0; i < head->getNumOfKeys(); i++)
   {
@@ -926,25 +976,22 @@ void BPlusTree::displayLL(Address address)
     // void *blockMainMemoryAddress = operator new(nodeSize);
     // std::memcpy(blockMainMemoryAddress, head->pointers[i].blockAddress, nodeSize);
 
-    std::cout << "\nData block accessed. Content is -----";
-    displayBlock(head->getPointer(i).blockAddress);
-    std::cout << std::endl;
-
     Record result = *(Record *)(disk->loadFromDisk(head->getPointer(i), sizeof(Record)));
-    std::cout << result.tconst << " | ";
+    std::cout << result.tconst << " | " << result.averageRating << " | " << result.numVotes << " | ";
 
 
   }
 
-  // Print empty slots
-  for (int i = head->getNumOfKeys(); i < maxKeys; i++)
-  {
-    std::cout << "x | ";
-  }
+  // // Print empty slots
+  // for (int i = head->getNumOfKeys(); i < maxKeys; i++)
+  // {
+  //   std::cout << "x | ";
+  // }
   
   // End of linked list
   if (head->getPointer(head->getNumOfKeys()).blockAddress == nullptr)
-  {
+  { 
+    std::cout << std::endl;
     std::cout << "End of linked list" << std::endl;
     return;
   }

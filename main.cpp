@@ -71,15 +71,15 @@ int main(){
             // std::cout<< disk.getTotalBlockSizeUsed() << " " << index.getTotalBlockSizeUsed() << std::endl;
 
             //Uncomment to see each data record
-            // if (recordCount >= 420){
+            // if (recordCount >= 100000){
                 // std::cout << tempRecord.tconst << "---"<< tempRecord.averageRating <<"---"<< tempRecord.numVotes << std::endl;
-                // std::cout << "Inserted record " << recordCount + 1 << " at block address: " << tempAddress.blockAddress << " and index " << tempAddress.index << std::endl;
+            //     std::cout << "Inserted record " << recordCount + 1 << " at block address: " << tempAddress.blockAddress << " and index " << tempAddress.index << std::endl;
                 // tree.displayTree(tree.getRoot(),tree.getHeight());
                 // tree.displayNode(tree.getRoot());
-                // std::cout << std::endl;
+            //     std::cout << std::endl;
                 
-                // if (recordCount == 430)
-                // {break;}
+            //     if (recordCount == 100005)
+            //     {break;}
             // }
 
             // if(tree.getHeight()==3){
@@ -89,15 +89,18 @@ int main(){
             // if (recordCount==160){
             //     std::cout << "prblem here" << std::endl;
             // }
-            // if (recordCount%1000 == 0){
-            //     std::cout << "loaded 1000 data" << std::endl;
-            // }
+            // if (recordCount == 500){
+            //     break;
+            // };
             // Sleep(100);
             // std::cout << recordCount << std::endl;
             recordCount += 1;
             
         }
     }
+    // tree.displayTree(tree.getRoot(), 0);
+
+    // tree.search(18,19);
 
     std::cout << "Memory pool created with:" << std::endl;
     std::cout << "Block size: " << BLOCKSIZE << "B" << std::endl;
