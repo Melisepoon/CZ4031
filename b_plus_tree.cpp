@@ -1,5 +1,7 @@
 #include <cstddef>
 #include <cmath>
+#include <cstring>
+#include <stdlib.h>
 #include "b_plus_tree.h"
 
 BPlusTree::BPlusTree(std::size_t blockSize, MemoryPool *disk, MemoryPool *index)
@@ -10,6 +12,7 @@ BPlusTree::BPlusTree(std::size_t blockSize, MemoryPool *disk, MemoryPool *index)
     this->maxKeys = BPlusTree::calculateMaxKeys(blockSize);
     this->root = NULL;
     this->rootAddress = NULL;
+    this->rootIndex = 0;
     this->height = 0;
     this->numOfNodes = 0;
 };
@@ -29,33 +32,42 @@ int BPlusTree::calculateMaxKeys(std::size_t blockSize)
 // Code for inseting
 
 void BPlusTree::insert(Address recordAddress, int value)
-{
+{ 
     // If no root exists, create a new B+ Tree root.
   if (root == nullptr)
   {
-    // Create a new tree node
-    TreeNode *node = new TreeNode(maxKeys);
+    // Create a new linked list (for duplicates) at the key.
+    TreeNode *LLNode = new TreeNode(maxKeys);
+    LLNode->setKey(0, value);
+    LLNode->setNumOfKeys(1);
+    LLNode->setPointer(0, recordAddress); // The disk address of the key just inserted
 
-    node->setKey(0, value);
-    node->setNumOfKeys(1);
-    node->setIsLeaf(true);
-    node->setPointer(0, recordAddress); // The disk address of the key just inserted
+    // Allocate LLNode and root address
+    Address LLNodeAddress = index->saveToDisk((void *)LLNode, sizeof(* root));
 
-    // Allocate node and root address
-    Address nodeAddress = index->saveToDisk((void *)node, blockSize);
-
-    // Keep track of root node and root node's disk address.
-    this->root = node;
-    rootAddress = nodeAddress.blockAddress;
+    // Create new node in main memory, set it to root, and add the key and values to it.
+    root = new TreeNode(maxKeys);
+    root->setKey(0, value);
+    root->setIsLeaf(true); // It is both the root and a leaf.
+    root->setNumOfKeys(1);
+    root->setPointer(0, LLNodeAddress); // Add record's disk address to pointer.
+    
+    // Write the root node into disk and track of root node's disk address.
+    Address wholeAddress = index->saveToDisk(root, sizeof(*root));
+    rootAddress = wholeAddress.blockAddress;
+    rootIndex = wholeAddress.index;
     height = 1;
   }
   // Else if root exists already, traverse the nodes to find the proper place to insert the key.
   else
   {
+
     TreeNode *current = root;
     TreeNode *parent;                          // Keep track of the parent as we go deeper into the tree in case we need to update it.
     void *parentDiskAddress = rootAddress; // Keep track of parent's disk address as well so we can update parent in disk.
+    short int parentDiskIndex = rootIndex;
     void *currentDiskAddress = rootAddress; // Store current node's disk address in case we need to update it in disk.
+    short int currentDiskIndex = rootIndex;
 
     // While not leaf, keep following the nodes to correct key.
     while (current->getIsLeaf() == false)
@@ -64,6 +76,7 @@ void BPlusTree::insert(Address recordAddress, int value)
       // Set the parent of the node (in case we need to assign new child later), and its disk address.
       parent = current;
       parentDiskAddress = currentDiskAddress;
+      parentDiskIndex = currentDiskIndex;
 
       // Check through all keys of the node to find key and pointer to follow downwards.
       for (int i = 0; i < current->getNumOfKeys(); i++)
@@ -72,10 +85,11 @@ void BPlusTree::insert(Address recordAddress, int value)
         if (value < current->getKey(i))
         {
           // Load node in from disk to main memory.
-          TreeNode *mainMemoryNode = (TreeNode *)index->loadFromDisk(current->getPointer(i), blockSize);
+          TreeNode *mainMemoryNode = (TreeNode *)index->loadFromDisk(current->getPointer(i), sizeof(* root));
 
           // Update cursorDiskAddress to maintain address in disk if we need to update nodes.
           currentDiskAddress = current->getPointer(i).blockAddress;
+          currentDiskIndex = current->getPointer(i).index;
 
           // Move to new node in main memory.
           current = mainMemoryNode;
@@ -85,10 +99,11 @@ void BPlusTree::insert(Address recordAddress, int value)
         if (i == current->getNumOfKeys() - 1)
         {
           // Load node in from disk to main memory.
-          TreeNode *mainMemoryNode = (TreeNode *)index->loadFromDisk(current->getPointer(i + 1), blockSize);
+          TreeNode *mainMemoryNode = (TreeNode *)index->loadFromDisk(current->getPointer(i + 1), sizeof(* root));
 
           // Update diskAddress to maintain address in disk if we need to update nodes.
           currentDiskAddress = current->getPointer(i + 1).blockAddress;
+          currentDiskIndex = current->getPointer(i + 1).index;
 
           // Move to new node in main memory.
           current = mainMemoryNode;
@@ -107,7 +122,6 @@ void BPlusTree::insert(Address recordAddress, int value)
       {
         i++;
       }
-
       // i is where our key goes in. Check if it's already there (duplicate).
       if (current->getKey(i) == value)
       {
@@ -140,7 +154,7 @@ void BPlusTree::insert(Address recordAddress, int value)
         LLNode->setPointer(0, recordAddress); // The disk address of the key just inserted
 
         // Allocate LLNode into disk.
-        Address LLNodeAddress = index->saveToDisk((void *)LLNode, blockSize);
+        Address LLNodeAddress = index->saveToDisk((void *)LLNode, sizeof(* root));
 
         // Update variables
         current->setPointer(i, LLNodeAddress);
@@ -152,8 +166,8 @@ void BPlusTree::insert(Address recordAddress, int value)
         // Now insert operation is complete, we need to store this updated node to disk.
         // currentDiskAddress is the address of node in disk, current is the address of node in main memory.
         // In this case, we count read/writes as 1/O only (Assume block remains in main memory).
-        Address currentrOriginalAddress{currentDiskAddress, 0};
-        index->saveToDisk(current, blockSize, currentrOriginalAddress);
+        Address currentrOriginalAddress{currentDiskAddress, currentDiskIndex};
+        index->saveToDisk(current, sizeof(* root), currentrOriginalAddress);
       }
     }
     // Overflow: If there's no space to insert new key, we have to split this node into two and update the parent if required.
@@ -220,7 +234,7 @@ void BPlusTree::insert(Address recordAddress, int value)
       LLNode->setPointer(0, recordAddress); // The disk address of the key just inserted
 
       // Allocate LLNode into disk.
-      Address LLNodeAddress = index->saveToDisk((void *)LLNode, blockSize);
+      Address LLNodeAddress = index->saveToDisk((void *)LLNode, sizeof(* root));
       tempPointerList[i] = LLNodeAddress;
       
       newLeaf->setIsLeaf(true); // New node is a leaf node.
@@ -253,8 +267,7 @@ void BPlusTree::insert(Address recordAddress, int value)
       }
 
       // Now that we have finished updating the two new leaf nodes, we need to write them to disk.
-      Address newLeafAddress = index->saveToDisk(newLeaf, blockSize);
-
+      Address newLeafAddress = index->saveToDisk(newLeaf, sizeof(* root));
       // Now to set the current's pointer to the disk address of the leaf and save it in place
       current->setPointer(current->getNumOfKeys(), newLeafAddress);
 
@@ -267,8 +280,8 @@ void BPlusTree::insert(Address recordAddress, int value)
         current->setPointer(i, nullAddress);
       }
 
-      Address currentOriginalAddress{currentDiskAddress, 0};
-      index->saveToDisk(current, blockSize, currentOriginalAddress);
+      Address currentOriginalAddress{currentDiskAddress, currentDiskIndex};
+      index->saveToDisk(current, sizeof(* root), currentOriginalAddress);
 
       // If we are at root (aka root == leaf), then we need to make a new parent root.
       if (current == root)
@@ -279,7 +292,7 @@ void BPlusTree::insert(Address recordAddress, int value)
         newRoot->setKey(0, newLeaf->getKey(0));
 
         // Point the new root's children as the existing node and the new node.
-        Address currentDisk{currentDiskAddress, 0};
+        Address currentDisk{currentDiskAddress, currentDiskIndex};
 
         newRoot->setPointer(0, currentDisk);
         newRoot->setPointer(1, newLeafAddress);
@@ -288,16 +301,18 @@ void BPlusTree::insert(Address recordAddress, int value)
         newRoot->setNumOfKeys(1);
 
         // Write the new root node to disk and update the root disk address stored in B+ Tree.
-        Address newRootAddress = index->saveToDisk(newRoot, blockSize);
+        Address newRootAddress = index->saveToDisk(newRoot, sizeof(* root));
 
         // Update the root address
         rootAddress = newRootAddress.blockAddress;
+        rootIndex = newRootAddress.index;
         root = newRoot;
       }
       // If we are not at the root, we need to insert a new parent in the middle levels of the tree.
       else
-      {
-        insertInternal(newLeaf->getKey(0), (TreeNode *)parentDiskAddress, (TreeNode *)newLeafAddress.blockAddress);
+      { 
+        Address parentAddress = {parentDiskAddress, parentDiskIndex};
+        insertInternal(newLeaf->getKey(0), parentAddress, newLeafAddress);
       }
     }
   }
@@ -306,19 +321,17 @@ void BPlusTree::insert(Address recordAddress, int value)
   numOfNodes = index->getBlocksAllocated();
 };
 
-void BPlusTree::insertInternal(int value, TreeNode *currentDiskAddress, TreeNode *childDiskAddress)
+void BPlusTree::insertInternal(int value, Address currentDiskAddress, Address childDiskAddress)
 {
     // Load in current (parent) and child from disk to get latest copy.
-  Address currentAddress{currentDiskAddress, 0};
-  TreeNode *current = (TreeNode *)index->loadFromDisk(currentAddress, blockSize);
+  TreeNode *current = (TreeNode *)index->loadFromDisk(currentDiskAddress, sizeof(* root));
 
-  if (currentDiskAddress == rootAddress)
+  if (currentDiskAddress.blockAddress == rootAddress && currentDiskAddress.index == rootIndex)
   {
     root = current;
   }
 
-  Address childAddress{childDiskAddress, 0};
-  TreeNode *child = (TreeNode *)index->loadFromDisk(childAddress, blockSize);
+  TreeNode *child = (TreeNode *)index->loadFromDisk(childDiskAddress, sizeof(* root));
 
   // If parent (current) still has space, we can simply add the child node as a pointer.
   // We don't have to load parent from the disk again since we still have a main memory pointer to it.
@@ -349,12 +362,12 @@ void BPlusTree::insertInternal(int value, TreeNode *currentDiskAddress, TreeNode
     current->setNumOfKeys(current->getNumOfKeys()+1);
 
     // Right side pointer of key of parent will point to the new child node.
-    Address childAddress{childDiskAddress, 0};
-    current->setPointer((i + 1), childAddress);
+
+    current->setPointer((i + 1), childDiskAddress);
 
     // Write the updated parent (current) to the disk.
-    Address currentAddress{currentDiskAddress, 0};
-    index->saveToDisk(current, blockSize, currentAddress);
+
+    index->saveToDisk(current, sizeof(* root), currentDiskAddress);
   }
   // If parent node doesn't have space, we need to recursively split parent node and insert more parent nodes.
   else
@@ -406,8 +419,8 @@ void BPlusTree::insertInternal(int value, TreeNode *currentDiskAddress, TreeNode
     }
 
     // Insert a pointer to the child to the right of its key.
-    Address childAddress = {childDiskAddress, 0};
-    tempPointerList[i + 1] = childAddress;
+
+    tempPointerList[i + 1] = childDiskAddress;
 
     // Split the two new nodes into two. ⌊(n)/2⌋ keys for left.
     // For right, we drop the rightmost key since we only need to represent the pointer.
@@ -458,27 +471,27 @@ void BPlusTree::insertInternal(int value, TreeNode *currentDiskAddress, TreeNode
  //   current->setPointer(current->getNumOfKeys(), childAddress);
 
     // Save the old parent and new internal node to disk.
-    Address currentAddress{currentDiskAddress, 0};
-    index->saveToDisk(current, blockSize, currentAddress);
+
+    index->saveToDisk(current, sizeof(* root), currentDiskAddress);
 
     // Address newInternalAddress{newInternal, 0};
-    Address newInternalDiskAddress = index->saveToDisk(newInternal, blockSize);
+    Address newInternalDiskAddress = index->saveToDisk(newInternal, sizeof(* root));
 
     // If current current is the root of the tree, we need to create a new root.
     if (current == root)
     {
-      TreeNode *newRoot = new TreeNode(blockSize);
+      TreeNode *newRoot = new TreeNode(maxKeys);
       // Update newRoot to hold the children.
       // Take the rightmost key of the old parent to be the root.
       // Although we threw it away, we are still using it to denote the leftbound of the old child.
       //newRoot->setKey(0, current->getKey(current->getNumOfKeys()));
       Address firstLeafNodeAddress = getFirstLeaf(newInternalDiskAddress);
-      TreeNode *firstLeafNode = (TreeNode *)index->loadFromDisk(firstLeafNodeAddress, blockSize);
+      TreeNode *firstLeafNode = (TreeNode *)index->loadFromDisk(firstLeafNodeAddress, sizeof(* root));
       newRoot->setKey(0, firstLeafNode->getKey(0));
 
       // Update newRoot's children to be the previous two nodes
-      Address currentAddress = {currentDiskAddress, 0};
-      newRoot->setPointer(0, currentAddress);
+
+      newRoot->setPointer(0, currentDiskAddress);
       newRoot->setPointer(1, newInternalDiskAddress);
 
       // Update variables for newRoot
@@ -487,20 +500,22 @@ void BPlusTree::insertInternal(int value, TreeNode *currentDiskAddress, TreeNode
       root = newRoot;
 
       // Save newRoot into disk.
-      Address newRootAddress = index->saveToDisk(root, blockSize);
+      Address newRootAddress = index->saveToDisk(root, sizeof(*root));
 
       // Update rootAddress
       rootAddress = newRootAddress.blockAddress;
+      rootIndex = newRootAddress.index;
     }
     // Otherwise, parent is internal, so we need to split and make a new parent internally again.
     // This is done recursively if needed.
     else
-    {
-      TreeNode *parentDiskAddress = findParent((TreeNode *)rootAddress, currentDiskAddress, current->getKey(0));
+    { 
+      Address wholeAddress = {rootAddress, rootIndex};
+      Address parentDiskNode = findParent(wholeAddress, currentDiskAddress, current->getKey(0));
 
       // KIVVVVV
       // insertInternal(current->keys[current->numKeys], parentDiskAddress, (Node *)newInternalDiskAddress.blockAddress);
-      insertInternal(tempKeyList[current->getNumOfKeys()], parentDiskAddress, (TreeNode *)newInternalDiskAddress.blockAddress);
+      insertInternal(tempKeyList[current->getNumOfKeys()], parentDiskNode, newInternalDiskAddress);
     }
   }
 };
@@ -508,7 +523,7 @@ void BPlusTree::insertInternal(int value, TreeNode *currentDiskAddress, TreeNode
 Address BPlusTree::insertLL(Address LLHead, Address address, int value)
 {
   // Load the linked list head node into main memory.
-  TreeNode *head = (TreeNode *)index->loadFromDisk(LLHead, blockSize);
+  TreeNode *head = (TreeNode *)index->loadFromDisk(LLHead, sizeof(* root));
 
   // Check if the head node has space to put record.
   if (head->getNumOfKeys() < maxKeys)
@@ -533,7 +548,7 @@ Address BPlusTree::insertLL(Address LLHead, Address address, int value)
     head->setNumOfKeys(head->getNumOfKeys() + 1);
     
     // Write head back to disk.
-    LLHead = index->saveToDisk((void *)head, blockSize, LLHead);
+    LLHead = index->saveToDisk((void *)head, sizeof(* root), LLHead);
 
     // Return head address
     return LLHead;
@@ -553,7 +568,7 @@ Address BPlusTree::insertLL(Address LLHead, Address address, int value)
     LLNode->setPointer(1, LLHead);
 
     // Write new linked list node to disk.
-    Address LLNodeAddress = index->saveToDisk((void *)LLNode, blockSize);
+    Address LLNodeAddress = index->saveToDisk((void *)LLNode, sizeof(* root));
 
     // Return disk address of new linked list head
     return LLNodeAddress;
@@ -567,81 +582,227 @@ void BPlusTree::remove(int value)
 
 };
 
-void BPlusTree::removeInternal(int value, TreeNode *current, TreeNode *child)
+void BPlusTree::removeInternal(int value, Address current, Address child)
 {
     
 };
 
 // Code for find Parent node
 
-TreeNode *BPlusTree::findParent(TreeNode *currentDiskAddress, TreeNode *childDiskAddress, int value)
+Address BPlusTree::findParent(Address currentDiskAddress, Address childDiskAddress, int value)
 {
-    // Load in current into main memory, starting from root.
-  Address currentAddress{currentDiskAddress, 0};
-  TreeNode *current = (TreeNode *)index->loadFromDisk(currentAddress, blockSize);
-
-  // If the root current passed in is a leaf node, there is no children, therefore no parent.
-  if (current->getIsLeaf())
+  Address parent = currentDiskAddress;
+  Address nullAddress = {nullptr, 0};
+  TreeNode *current = (TreeNode *)index->loadFromDisk(currentDiskAddress, sizeof(* root));
+  if(current->getIsLeaf())
   {
-    return nullptr;
+    return nullAddress;
   }
-
-  // Maintain parentDiskAddress
-  TreeNode *parentDiskAddress = currentDiskAddress;
-
-  // While not leaf, keep following the nodes to correct key.
-  while (current->getIsLeaf() == false)
+  for(int i = 0; i < current->getNumOfKeys()+1; i++)
   {
-    // Check through all pointers of the node to find match.
-    for (int i = 0; i < current->getNumOfKeys() + 1; i++)
+    // std::cout << i << " Current node key: " <<  current->getKey(i) << " finding: " << value << std::endl;
+    if(current->getPointer(i).blockAddress == childDiskAddress.blockAddress && current->getPointer(i).index == childDiskAddress.index)
     {
-      if (current->getPointer(i).blockAddress == childDiskAddress)
-      {
-        return parentDiskAddress;
-      }
+      
+      parent = currentDiskAddress;
+      return parent;
+    }
+    // else
+    // {
+    //     parent = findParent(current->getPointer(i),childDiskAddress, value);
+    //     if(parent.blockAddress!=NULL)return parent;
+    // }
+  }
+  for (int i = 0; i < current->getNumOfKeys(); i++)
+  {
+    // If key is lesser than current key, go to the left pointer's node.
+    if (value < current->getKey(i))
+    {
+      // Move to new node in main memory.
+      findParent(current->getPointer(i), childDiskAddress, value);
     }
 
-    for (int i = 0; i < current->getNumOfKeys(); i++)
+    // Else if key larger than all keys in the node, go to last pointer's node (rightmost).
+    if (i == current->getNumOfKeys() - 1)
     {
-      // If key is lesser than current key, go to the left pointer's node.
-      if (value < current->getKey(i))
-      {
-        // Load node in from disk to main memory.
-        TreeNode *mainMemoryNode = (TreeNode *)index->loadFromDisk(current->getPointer(i), blockSize);
-
-        // Update parent address.
-        parentDiskAddress = (TreeNode *)current->getPointer(i).blockAddress;
-
-        // Move to new node in main memory.
-        current = (TreeNode *)mainMemoryNode;
-        break;
-      }
-
-      // Else if key larger than all keys in the node, go to last pointer's node (rightmost).
-      if (i == current->getNumOfKeys() - 1)
-      {
-        // Load node in from disk to main memory.
-        TreeNode *mainMemoryNode = (TreeNode *)index->loadFromDisk(current->getPointer(i + 1), blockSize);
-
-        // Update parent address.
-        parentDiskAddress = (TreeNode *)current->getPointer(i + 1).blockAddress;
-
-        // Move to new node in main memory.
-        current = (TreeNode *)mainMemoryNode;
-        break;
-      }
+      // Load node in from disk to main memory.
+      findParent(current->getPointer(current->getNumOfKeys()), childDiskAddress, value);
     }
   }
+  return parent;
+}
+// {
+//     // Load in current into main memory, starting from root.
 
-  // If we reach here, means cannot find already.
-  return nullptr;
-};
+//   Address nullAddress = {nullptr, 0};
+//   TreeNode *current = (TreeNode *)index->loadFromDisk(currentDiskAddress, sizeof(* root));
+
+//   // If the root current passed in is a leaf node, there is no children, therefore no parent.
+//   if (current->getIsLeaf())
+//   { 
+//     return nullAddress;
+//   }
+
+//   // Maintain parentDiskAddress
+//   Address parentDiskAddress = currentDiskAddress;
+
+//   // While not leaf, keep following the nodes to correct key.
+//   while (true)
+//   {
+//     // Check through all pointers of the node to find match.
+//     for (int i = 0; i < current->getNumOfKeys() + 1; i++)
+//     {
+//       if (current->getPointer(i).blockAddress == childDiskAddress.blockAddress && current->getPointer(i).index == childDiskAddress.index)
+//       {
+//         return parentDiskAddress;
+//       }
+//     }
+
+//     for (int i = 0; i < current->getNumOfKeys(); i++)
+//     {
+//       // If key is lesser than current key, go to the left pointer's node.
+//       if (value < current->getKey(i))
+//       {
+//         // Load node in from disk to main memory.
+//         TreeNode *mainMemoryNode = (TreeNode *)index->loadFromDisk(current->getPointer(i), sizeof(* root));
+
+//         // Update parent address.
+//         parentDiskAddress = current->getPointer(i);
+
+//         // Move to new node in main memory.
+//         current = (TreeNode *)mainMemoryNode;
+//         break;
+//       }
+
+//       // Else if key larger than all keys in the node, go to last pointer's node (rightmost).
+//       if (i == current->getNumOfKeys() - 1)
+//       {
+//         // Load node in from disk to main memory.
+//         TreeNode *mainMemoryNode = (TreeNode *)index->loadFromDisk(current->getPointer(i + 1), sizeof(* root));
+
+//         // Update parent address.
+//         parentDiskAddress = current->getPointer(i + 1);
+
+//         // Move to new node in main memory.
+//         current = (TreeNode *)mainMemoryNode;
+//         break;
+//       }
+//     }
+//   }
+
+//   // If we reach here, means cannot find already.
+//   return nullAddress;
+// };
 
 // Code for query
 
 void BPlusTree::search(int leftValue, int rightValue)
 {
-    
+    // Tree is empty.
+  if (rootAddress == nullptr)
+  {
+    throw std::logic_error("Tree is empty!");
+  }
+  // Else iterate through root node and follow the keys to find the correct key.
+  else
+  {
+    // Load in root from disk.
+    Address rootDiskAddress{rootAddress, 0};
+    root = (TreeNode *)index->loadFromDisk(rootDiskAddress, sizeof(* root));
+
+    // for displaying to output file
+    std::cout << "Index node accessed. Content is -----";
+    displayNode(root);
+
+    TreeNode *current = root;
+
+    bool found = false;
+
+    // While we haven't hit a leaf node, and haven't found a range.
+    while (current->getIsLeaf() == false)
+    {
+      // Iterate through each key in the current node. We need to load nodes from the disk whenever we want to traverse to another node.
+      for (int i = 0; i < current->getNumOfKeys(); i++)
+      {
+        // If lowerBoundKey is lesser than current key, go to the left pointer's node to continue searching.
+        if (leftValue < current->getKey(i))
+        {
+          // Load node from disk to main memory.
+          current = (TreeNode *)index->loadFromDisk(current->getPointer(i), sizeof(* root));
+
+          // for displaying to output file
+          std::cout << "Index node accessed. Content is -----";
+          displayNode(current);
+
+          break;
+        }
+        // If we reached the end of all keys in this node (larger than all), then go to the right pointer's node to continue searching.
+        if (i == current->getNumOfKeys() - 1)
+        {
+          // Load node from disk to main memory.
+          // Set current to the child node, now loaded in main memory.
+          current = (TreeNode *)index->loadFromDisk(current->getPointer(i + 1), sizeof(* root));
+
+          // for displaying to output file
+          std::cout << "Index node accessed. Content is -----";
+          displayNode(current);
+          break;
+        }
+      }
+    }
+
+    // When we reach here, we have hit a leaf node corresponding to the lowerBoundKey.
+    // Again, search each of the leaf node's keys to find a match.
+    // vector<Record> results;
+    // unordered_map<void *, void *> loadedBlocks; // Maintain a reference to all loaded blocks in main memory.
+
+    // Keep searching whole range until we find a key that is out of range.
+    bool stop = false;
+
+    while (stop == false)
+    {
+      int i;
+      for (i = 0; i < current->getNumOfKeys(); i++)
+      {
+        // Found a key within range, now we need to iterate through the entire range until the upperBoundKey.
+        if (current->getKey(i) > rightValue)
+        {
+          stop = true;
+          break;
+        }
+        if (current->getKey(i) >= leftValue && current->getKey(i) <= rightValue)
+        {
+          // for displaying to output file
+          std::cout << "Index node (LLNode) accessed. Content is -----";
+          displayNode(current);
+
+          // Add new line for each leaf node's linked list printout.
+          std::cout << std::endl;
+          std::cout << "LLNode: tconst for number of votes: " << current->getKey(i) << " > ";          
+
+          // Access the linked list node and print records.
+          displayLL(current->getPointer(i));
+        }
+      }
+
+      // On the last pointer, check if last key is max, if it is, stop. Also stop if it is already equal to the max
+      if (current->getPointer(current->getNumOfKeys()).blockAddress != nullptr && current->getKey(i) != rightValue)
+      {
+        // Set current to be next leaf node (load from disk).
+        current = (TreeNode *)index->loadFromDisk(current->getPointer(current->getNumOfKeys()), sizeof(* root));
+
+        // for displaying to output file
+        std::cout << "Index node accessed. Content is -----";
+        displayNode(current);
+
+      }
+      else
+      {
+        stop = true;
+      }
+    }
+  }
+  return;
 };
 
 // Code for displaying the tree
@@ -650,7 +811,7 @@ void BPlusTree::displayTree(TreeNode *currentDiskAddress, int height)
 {
   // Load in current from disk.
   Address currentMainMemoryAddress{currentDiskAddress, 0};
-  TreeNode *current = (TreeNode *)index->loadFromDisk(currentMainMemoryAddress, blockSize);
+  TreeNode *current = (TreeNode *)index->loadFromDisk(currentMainMemoryAddress, sizeof(* root));
 
   // If tree exists, display all nodes.
   if (current != nullptr)
@@ -668,7 +829,7 @@ void BPlusTree::displayTree(TreeNode *currentDiskAddress, int height)
       for (int i = 0; i < current->getNumOfKeys() + 1; i++)
       {
         // Load node in from disk to main memory.
-        TreeNode *mainMemoryNode = (TreeNode *)index->loadFromDisk(current->getPointer(i), blockSize);
+        TreeNode *mainMemoryNode = (TreeNode *)index->loadFromDisk(current->getPointer(i), sizeof(* root));
 
         displayTree((TreeNode *)mainMemoryNode, height + 1);
       }
@@ -683,7 +844,7 @@ void BPlusTree::displayNode(TreeNode *current)
   std::cout << "|";
   for (int i = 0; i < current->getNumOfKeys(); i++)
   {
-    std::cout << current->getPointer(i).blockAddress << " | ";
+    std::cout << current->getPointer(i).blockAddress << "" << current->getPointer(i).index << " | ";
     std::cout << current->getKey(i) << " | ";
   }
 
@@ -692,7 +853,7 @@ void BPlusTree::displayNode(TreeNode *current)
     std::cout << " Null |";
   }
   else {
-    std::cout << current->getPointer(current->getNumOfKeys()).blockAddress << "|";
+    std::cout << current->getPointer(current->getNumOfKeys()).blockAddress << "" << current->getPointer(i).index << "|";
   }
 
   for (int i = current->getNumOfKeys(); i < maxKeys; i++)
@@ -710,11 +871,87 @@ Address BPlusTree::getFirstLeaf(Address current)
   if(current.blockAddress == nullptr){
     return nullAddress;
   }else{
-      TreeNode *leafNode = (TreeNode *)index->loadFromDisk(current, blockSize);
+      TreeNode *leafNode = (TreeNode *)index->loadFromDisk(current, sizeof(* root));
       while(!leafNode->getIsLeaf()){
-        leafNode=(TreeNode *)leafNode->getPointer(0).blockAddress;
+        leafNode = (TreeNode *)index->loadFromDisk(leafNode->getPointer(0), sizeof(* root));
       }
       Address leafNodeAddress = {leafNode, 0};
       return (leafNodeAddress);
   }
 };
+
+void BPlusTree::displayBlock(void *blockAddress)
+{
+  // Load block into memory
+  void *block = operator new(blockSize);
+  std::memcpy(block, blockAddress, blockSize);
+
+  unsigned char testBlock[blockSize];
+  std::memset(testBlock, '\0', blockSize);
+
+  // Block is empty.
+  if (std::memcmp(testBlock, block, blockSize) == 0)
+  {
+    std::cout << "Empty block!" << '\n';
+    return;
+  }
+
+  unsigned char *blockChar = (unsigned char *)block;
+
+  int i = 0;
+  while (i < blockSize)
+  {
+    // Load each record
+    void *recordAddress = operator new(sizeof(Record));
+    std::memcpy(recordAddress, blockChar, sizeof(Record));
+
+    Record *record = (Record *)recordAddress;
+
+    std::cout << "[" << record->tconst << "|" << record->averageRating << "|" << record->numVotes << "]  ";
+    blockChar += sizeof(Record);
+    i += sizeof(Record);
+  }
+  
+}
+
+void BPlusTree::displayLL(Address address)
+{
+  // Load linked list head into main memory.
+  TreeNode *head = (TreeNode *)index->loadFromDisk(address, sizeof(* root));
+
+  // Print all records in the linked list.
+  for (int i = 0; i < head->getNumOfKeys(); i++)
+  {
+    // Load the block from disk.
+    // void *blockMainMemoryAddress = operator new(nodeSize);
+    // std::memcpy(blockMainMemoryAddress, head->pointers[i].blockAddress, nodeSize);
+
+    std::cout << "\nData block accessed. Content is -----";
+    displayBlock(head->getPointer(i).blockAddress);
+    std::cout << std::endl;
+
+    Record result = *(Record *)(disk->loadFromDisk(head->getPointer(i), sizeof(Record)));
+    std::cout << result.tconst << " | ";
+
+
+  }
+
+  // Print empty slots
+  for (int i = head->getNumOfKeys(); i < maxKeys; i++)
+  {
+    std::cout << "x | ";
+  }
+  
+  // End of linked list
+  if (head->getPointer(head->getNumOfKeys()).blockAddress == nullptr)
+  {
+    std::cout << "End of linked list" << std::endl;
+    return;
+  }
+
+  // Move to next node in linked list.
+  if (head->getPointer(head->getNumOfKeys()).blockAddress != nullptr)
+  {
+    displayLL(head->getPointer(head->getNumOfKeys()));
+  }
+}

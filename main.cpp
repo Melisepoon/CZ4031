@@ -3,6 +3,8 @@
 #include <fstream>
 #include <vector>
 #include <string.h>
+#include <stdio.h>
+#include <windows.h>
 #include "memory_pool.h"
 #include "b_plus_tree.h"
 
@@ -15,6 +17,7 @@ int main(){
 
     int choice = 0;
     while (choice != 1 && choice != 2){
+        fflush(stdin);
         std::cout << "Enter a choice:" << std::endl;
         std::cout << "1 for 200B" << std::endl;
         std::cout << "2 for 500B" << std::endl;
@@ -32,7 +35,7 @@ int main(){
     std::cout << "=============================Creating Memory Pool=============================" << std::endl;
 
     MemoryPool disk(200000000, BLOCKSIZE); //200MB
-    MemoryPool index(200000000, BLOCKSIZE); //200MB
+    MemoryPool index(5000000000, BLOCKSIZE); //500MB
 
     BPlusTree tree = BPlusTree(BLOCKSIZE, &disk, &index);
     std::cout << "Max records per block: " << disk.getMaxRecords() << std::endl;
@@ -54,33 +57,44 @@ int main(){
             std::istringstream lineStream(line);
 
             //Assigning tempRecord.tconst, tempRecord.averageRating & tempRecord.numVotes values
-            lineStream >> tempRecord.tconst >> tempRecord.averageRating >> tempRecord.numVotes;
+            lineStream >> tempRecord.tconst >>tempRecord.averageRating >> tempRecord.numVotes;
 
             //Insert this record into the database
             Address tempAddress = disk.saveToDisk(&tempRecord, sizeof(tempRecord));
 
+            // std::cout << tempRecord.tconst << "---"<< tempRecord.averageRating <<"---"<< tempRecord.numVotes << std::endl;
+            // std::cout << "Inserted record " << recordCount + 1 << " at block address: " << tempAddress.blockAddress << " and index " << tempAddress.index << std::endl;
+
             //Build the bplustree as we insert records
             tree.insert(tempAddress, tempRecord.numVotes);
 
+            // std::cout<< disk.getTotalBlockSizeUsed() << " " << index.getTotalBlockSizeUsed() << std::endl;
+
             //Uncomment to see each data record
-            if (recordCount >= 300){
-                std::cout << tempRecord.tconst << "---"<< tempRecord.averageRating <<"---"<< tempRecord.numVotes << std::endl;
-                std::cout << "Inserted record " << recordCount + 1 << " at block address: " << tempAddress.blockAddress << " and index " << tempAddress.index << std::endl;
-                tree.displayTree(tree.getRoot(),tree.getHeight());
-                std::cout << std::endl;
+            // if (recordCount >= 420){
+                // std::cout << tempRecord.tconst << "---"<< tempRecord.averageRating <<"---"<< tempRecord.numVotes << std::endl;
+                // std::cout << "Inserted record " << recordCount + 1 << " at block address: " << tempAddress.blockAddress << " and index " << tempAddress.index << std::endl;
+                // tree.displayTree(tree.getRoot(),tree.getHeight());
+                // tree.displayNode(tree.getRoot());
+                // std::cout << std::endl;
                 
-                if (recordCount == 310)
-                {break;}
-            }
-            recordCount += 1;
+                // if (recordCount == 430)
+                // {break;}
+            // }
 
             // if(tree.getHeight()==3){
             //     std::cout << "============================================================================" << std::endl;
             // }
 
-            // if (recordCount==51){
+            // if (recordCount==160){
             //     std::cout << "prblem here" << std::endl;
             // }
+            // if (recordCount%1000 == 0){
+            //     std::cout << "loaded 1000 data" << std::endl;
+            // }
+            // Sleep(100);
+            // std::cout << recordCount << std::endl;
+            recordCount += 1;
             
         }
     }
