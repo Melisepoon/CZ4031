@@ -57,6 +57,7 @@ void BPlusTree::insert(Address recordAddress, int value)
     rootAddress = wholeAddress.blockAddress;
     rootIndex = wholeAddress.index;
     height = 1;
+    numOfNodes = 1;
   }
   // Else if root exists already, traverse the nodes to find the proper place to insert the key.
   else
@@ -269,6 +270,7 @@ void BPlusTree::insert(Address recordAddress, int value)
 
       // Now that we have finished updating the two new leaf nodes, we need to write them to disk.
       Address newLeafAddress = index->saveToDisk(newLeaf, sizeof(* root));
+      numOfNodes++;
       // Now to set the current's pointer to the disk address of the leaf and save it in place
       current->setPointer(current->getNumOfKeys(), newLeafAddress);
 
@@ -303,6 +305,8 @@ void BPlusTree::insert(Address recordAddress, int value)
 
         // Write the new root node to disk and update the root disk address stored in B+ Tree.
         Address newRootAddress = index->saveToDisk(newRoot, sizeof(* root));
+        numOfNodes++;
+        height++;
 
         // Update the root address
         rootAddress = newRootAddress.blockAddress;
@@ -318,8 +322,6 @@ void BPlusTree::insert(Address recordAddress, int value)
     }
   }
 
-  // update numnodes 
-  numOfNodes = index->getBlocksAllocated();
 };
 
 void BPlusTree::insertInternal(int value, Address currentDiskAddress, Address childDiskAddress)
@@ -426,7 +428,7 @@ void BPlusTree::insertInternal(int value, Address currentDiskAddress, Address ch
     // Split the two new nodes into two. ⌊(n)/2⌋ keys for left.
     // For right, we drop the rightmost key since we only need to represent the pointer.
     current->setNumOfKeys((maxKeys + 1) / 2);
-    newInternal->setNumOfKeys((maxKeys + 1) / 2);
+    newInternal->setNumOfKeys(maxKeys - (maxKeys + 1) / 2);
 
     // Reassign keys into current from tempkeyslist to account for new child node
     for (int i = 0; i < current->getNumOfKeys(); i++)
@@ -477,6 +479,7 @@ void BPlusTree::insertInternal(int value, Address currentDiskAddress, Address ch
 
     // Address newInternalAddress{newInternal, 0};
     Address newInternalDiskAddress = index->saveToDisk(newInternal, sizeof(* root));
+    numOfNodes++;
 
     // If current current is the root of the tree, we need to create a new root.
     if (current == root)
@@ -502,6 +505,7 @@ void BPlusTree::insertInternal(int value, Address currentDiskAddress, Address ch
 
       // Save newRoot into disk.
       Address newRootAddress = index->saveToDisk(root, sizeof(*root));
+      numOfNodes++;
 
       // Update rootAddress
       rootAddress = newRootAddress.blockAddress;
@@ -860,6 +864,11 @@ void BPlusTree::displayTree(TreeNode *currentDiskAddress, int height)
   Address currentMainMemoryAddress{currentDiskAddress, 0};
   TreeNode *current = (TreeNode *)index->loadFromDisk(currentMainMemoryAddress, sizeof(* root));
 
+  if (this->height < height)
+  {
+    this->height = height;
+  }
+
   // If tree exists, display all nodes.
   if (current != nullptr)
   {
@@ -1002,3 +1011,37 @@ void BPlusTree::displayLL(Address address)
     displayLL(head->getPointer(head->getNumOfKeys()));
   }
 }
+
+void BPlusTree::calculateHeight(Address currentAddress, int height)
+{
+  // Load in current from disk.
+  TreeNode *current = (TreeNode *)index->loadFromDisk(currentAddress, sizeof(* root));
+
+  if (this->height < height)
+  {
+    this->height = height;
+  }
+
+  // If tree exists, display all nodes.
+  if (current != nullptr)
+  {
+    // for (int i = 0; i < height; i++)
+    // {
+    //   std::cout << "   ";
+    // }
+    // std::cout << " height " << height << ": ";
+
+    // displayNode(current);
+
+    if (current->getIsLeaf() != true)
+    {
+      for (int i = 0; i < current->getNumOfKeys() + 1; i++)
+      {
+        // // Load node in from disk to main memory.
+        // TreeNode *mainMemoryNode = (TreeNode *)index->loadFromDisk(current->getPointer(i), sizeof(* root));
+
+        calculateHeight(current->getPointer(i), height + 1);
+      }
+    }
+  }
+};

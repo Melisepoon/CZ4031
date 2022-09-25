@@ -34,8 +34,8 @@ int main(){
     std::cout << "Block size selected: " << BLOCKSIZE << std::endl;
     std::cout << "=============================Creating Memory Pool=============================" << std::endl;
 
-    MemoryPool disk(200000000, BLOCKSIZE); //200MB
-    MemoryPool index(5000000000, BLOCKSIZE); //500MB
+    MemoryPool disk(200000000, (std::size_t)BLOCKSIZE); //200MB
+    MemoryPool index(500000000, (std::size_t)BLOCKSIZE); //500MB
 
     BPlusTree tree = BPlusTree(BLOCKSIZE, &disk, &index);
     std::cout << "Max records per block: " << disk.getMaxRecords() << std::endl;
@@ -89,9 +89,19 @@ int main(){
             // if (recordCount==160){
             //     std::cout << "prblem here" << std::endl;
             // }
-            // if (recordCount == 500){
+            // if (recordCount >= 1528){
+            //     std::cout << tempRecord.tconst << "---"<< tempRecord.averageRating <<"---"<< tempRecord.numVotes << std::endl;
+            //     std::cout << "Inserted record " << recordCount + 1 << " at block address: " << tempAddress.blockAddress << " and index " << tempAddress.index << std::endl;
+            //     tree.displayTree(tree.getRoot(),1);
+            //     std::cout << tree.getNumOfNodes() << std::endl;
+            //     tree.calculateHeight({tree.getRootAddress(), tree.getRootIndex()}, 1);
+            //     std::cout << tree.getHeight() << std::endl;
+            //     std::cout << std::endl;
+            // }
+            // if (recordCount == 1540)
+            // {
             //     break;
-            // };
+            // }
             // Sleep(100);
             // std::cout << recordCount << std::endl;
             recordCount += 1;
@@ -99,6 +109,8 @@ int main(){
         }
     }
     // tree.displayTree(tree.getRoot(), 0);
+    // std::cout << tree.getNumOfNodes() << std::endl;
+    // std::cout << tree.getHeight() << std::endl;
 
     // tree.search(18,19);
 

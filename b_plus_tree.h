@@ -34,10 +34,10 @@ public:
 
     void*getRootAddress(){return rootAddress;};
 
-    int getRootIndex(){return rootIndex;}
+    short int getRootIndex(){return rootIndex;}
     
     int getMaxKeys(){return maxKeys;};
-    
+
     int getHeight(){return height;};
 
     int getNumOfNodes(){return numOfNodes;};
@@ -61,6 +61,8 @@ public:
     void search(int leftValue, int righValue);
 
     Address getFirstLeaf(Address current);
+
+    void calculateHeight(Address current, int height);
 
 };
 
