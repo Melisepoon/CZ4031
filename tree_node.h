@@ -37,7 +37,6 @@ public:
     void setNumOfKeys(int numOfKeys){this->numOfKeys = numOfKeys;};
     void setPointer(int index, Address address){pointers[index] = address;};
     void setIsLeaf(bool isLeaf){this->isLeaf = isLeaf;};
-
 };
 
 #endif //TREENODE_H

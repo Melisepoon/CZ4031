@@ -123,12 +123,12 @@ int main(){
     std::cout << "Total Records Count: " << recordCount << std::endl;
     std::cout << std::endl;
 
-    std::cout << "=============================Experimet 1=============================" << std::endl;
+    std::cout << "=============================Experiment 1=============================" << std::endl;
     std::cout << "Data Blocks Count: " << disk.getBlocksAllocated() << std::endl;
     std::cout << "Size of DataBase: " << BLOCKSIZE*disk.getBlocksAllocated() << " MB" << std::endl;
     std::cout << std::endl;
 
-    std::cout << "=============================Experimet 2=============================" << std::endl;
+    std::cout << "=============================Experiment 2=============================" << std::endl;
     std::cout << "Parameter n of the B+ Tree: " << tree.getMaxKeys() << std::endl;
     std::cout << "The Number of nodes of the B+ Tree: " << tree.getNumOfNodes() << std::endl;
     tree.calculateHeight({tree.getRootAddress(), tree.getRootIndex()}, 1);
@@ -142,7 +142,7 @@ int main(){
     tree.displayNode(childNode);
     std::cout << std::endl;
 
-    std::cout << "=============================Experimet 3=============================" << std::endl;
+    std::cout << "=============================Experiment 3=============================" << std::endl;
     tree.search(500,500);
     std::cout << "The number of index nodes accessed: " << std::endl;
 
@@ -156,7 +156,7 @@ int main(){
 
     std::cout << std::endl;
 
-    std::cout << "=============================Experimet 4=============================" << std::endl;
+    std::cout << "=============================Experiment 4=============================" << std::endl;
     tree.search(30000,40000);
     std::cout << "The number of index nodes accessed: " << std::endl;
 
@@ -170,7 +170,7 @@ int main(){
 
     std::cout << std::endl;
 
-    std::cout << "=============================Experimet 5=============================" << std::endl;
+    std::cout << "=============================Experiment 5=============================" << std::endl;
     tree.remove(1000);
     std::cout << "The number of times that a node is deleted: " << std::endl;
 
