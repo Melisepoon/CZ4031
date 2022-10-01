@@ -1,3 +1,8 @@
+//
+//  Created by Huang NengQi
+//  On 20/09/2022
+//
+
 #ifndef BPLUSTREE_H
 #define BPLUSTREE_H
 
@@ -24,7 +29,7 @@ private:
     
     void insertInternal(int value, Address currentDiskAddress, Address childDiskAddress);
     void removeInternal(int value, Address currentDiskAddress, Address childDiskAddress);
-    Address findParent(Address currentDiskAddress, Address childDiskAddress, int value);
+    Address findParent(Address currentDiskAddress, Address childDiskAddress);
 
 public:
 
@@ -48,9 +53,13 @@ public:
 
     void displayNode(TreeNode *current);
 
+    void displayNodeFile(TreeNode *current);
+
     void displayBlock(void *blockAddress);
 
     void displayLL(Address address);
+
+    void displayLLFile(Address address);
 
     void insert(Address recordAddress, int value);
 
@@ -60,7 +69,7 @@ public:
 
     void removeLL(Address LLHeadAddress);
 
-    void search(int leftValue, int righValue);
+    float *search(int leftValue, int righValue);
 
     Address getFirstLeaf(Address current);
 

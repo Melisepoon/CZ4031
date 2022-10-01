@@ -1,3 +1,8 @@
+//
+//  Created by Huang NengQi
+//  On 20/09/2022
+//
+
 #include <iostream>
 #include <sstream>
 #include <fstream>
@@ -31,7 +36,7 @@ int main(){
             std::cout << "Invalid input! Please chose 1 or 2." << std::endl;
         }
     }
-    std::cout << "Block size selected: " << BLOCKSIZE << std::endl;
+    std::cout << "Block size selected: " << BLOCKSIZE << "B" << std::endl;
     std::cout << std::endl;
     std::cout << "=============================Creating Memory Pool=============================" << std::endl;
 
@@ -90,16 +95,16 @@ int main(){
             // if (recordCount==160){
             //     std::cout << "prblem here" << std::endl;
             // }
-            // if (recordCount >= 1528){
-            //     std::cout << tempRecord.tconst << "---"<< tempRecord.averageRating <<"---"<< tempRecord.numVotes << std::endl;
+            // if (recordCount >= 100000){
+                // std::cout << tempRecord.tconst << "---"<< tempRecord.averageRating <<"---"<< tempRecord.numVotes << std::endl;
             //     std::cout << "Inserted record " << recordCount + 1 << " at block address: " << tempAddress.blockAddress << " and index " << tempAddress.index << std::endl;
-            //     tree.displayTree(tree.getRoot(),1);
+                // tree.displayTree(tree.getRoot(),1);
             //     std::cout << tree.getNumOfNodes() << std::endl;
             //     tree.calculateHeight({tree.getRootAddress(), tree.getRootIndex()}, 1);
             //     std::cout << tree.getHeight() << std::endl;
             //     std::cout << std::endl;
             // }
-            // if (recordCount == 170)
+            // if (recordCount == 10000)
             // {
             //     break;
             // }
@@ -118,6 +123,8 @@ int main(){
     // tree.displayTree(tree.getRoot(), 1);
     // tree.search(18,19);
 
+    std::ofstream myfile("./search_result.txt");
+
     std::cout << "Memory pool created with:" << std::endl;
     std::cout << "Block size: " << BLOCKSIZE << "B" << std::endl;
     std::cout << "Total Records Count: " << recordCount << std::endl;
@@ -125,7 +132,7 @@ int main(){
 
     std::cout << "=============================Experiment 1=============================" << std::endl;
     std::cout << "Data Blocks Count: " << disk.getBlocksAllocated() << std::endl;
-    std::cout << "Size of DataBase: " << BLOCKSIZE*disk.getBlocksAllocated() << " MB" << std::endl;
+    std::cout << "Size of DataBase: " << BLOCKSIZE*disk.getBlocksAllocated() << "B" << std::endl;
     std::cout << std::endl;
 
     std::cout << "=============================Experiment 2=============================" << std::endl;
@@ -143,39 +150,32 @@ int main(){
     std::cout << std::endl;
 
     std::cout << "=============================Experiment 3=============================" << std::endl;
-    tree.search(500,500);
-    std::cout << "The number of index nodes accessed: " << std::endl;
-
+    float *counter = tree.search(500,500);
+    std::cout << "The number of index nodes accessed: " << int(counter[0]) << std::endl;
     std::cout << "The content of the index nodes accessed: " << std::endl;
-
-    std::cout << "The number of data blocks accessed: " << std::endl;
-    
+    std::cout << "View search_result.txt for details" << std::endl;
+    std::cout << "The number of data blocks accessed: " << int(counter[1]) << std::endl;
     std::cout << "The Content of the data blocks accessed: " << std::endl;
-
-    std::cout << "The Average of \"averageRating's\": " << std::endl;
-
+    std::cout << "View search_result.txt for details" << std::endl;
+    std::cout << "The Average of \"averageRating's\": " << counter[2] << std::endl;
     std::cout << std::endl;
 
     std::cout << "=============================Experiment 4=============================" << std::endl;
-    tree.search(30000,40000);
-    std::cout << "The number of index nodes accessed: " << std::endl;
-
+    counter = tree.search(30000,40000);
+    std::cout << "The number of index nodes accessed: " << int(counter[0]) << std::endl;
     std::cout << "The content of the index nodes accessed: " << std::endl;
-
-    std::cout << "The number of data blocks accessed: " << std::endl;
-    
+    std::cout << "View search_result.txt for details" << std::endl;
+    std::cout << "The number of data blocks accessed: " << int(counter[1]) << std::endl;
     std::cout << "The Content of the data blocks accessed: " << std::endl;
-
-    std::cout << "The Average of \"averageRating's\": " << std::endl;
-
+    std::cout << "View search_result.txt for details" << std::endl;
+    std::cout << "The Average of \"averageRating's\": " << counter[2] << std::endl;
     std::cout << std::endl;
 
     std::cout << "=============================Experiment 5=============================" << std::endl;
+    int originalNodeCount = tree.getNumOfNodes();
     tree.remove(1000);
-    std::cout << "The number of times that a node is deleted: " << std::endl;
-
-    std::cout << "The number nodes: " << std::endl;
-
+    int nodesDeleted = originalNodeCount - tree.getNumOfNodes();
+    std::cout << "The number of times that a node is deleted: " << nodesDeleted << std::endl;
     tree.calculateHeight({tree.getRootAddress(), tree.getRootIndex()}, 1);
     std::cout << "The height of the B+ Tree: " << tree.getHeight() << std::endl;
     std::cout << "The content of the root node: " << std::endl;

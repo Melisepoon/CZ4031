@@ -1,8 +1,15 @@
+//
+//  Created by Huang NengQi
+//  On 20/09/2022
+//
+
 #include <cstddef>
 #include <cmath>
 #include <cstring>
 #include <stdlib.h>
+#include <fstream>
 #include "b_plus_tree.h"
+
 
 BPlusTree::BPlusTree(std::size_t blockSize, MemoryPool *disk, MemoryPool *index)
 {
@@ -317,6 +324,7 @@ void BPlusTree::insert(Address recordAddress, int value)
       else
       { 
         Address parentAddress = {parentDiskAddress, parentDiskIndex};
+        // findParent({rootAddress,rootIndex},{currentDiskAddress,currentDiskIndex},current->getKey(0));
         insertInternal(newLeaf->getKey(0), parentAddress, newLeafAddress);
       }
     }
@@ -516,7 +524,7 @@ void BPlusTree::insertInternal(int value, Address currentDiskAddress, Address ch
     else
     { 
       Address wholeAddress = {rootAddress, rootIndex};
-      Address parentDiskNode = findParent(wholeAddress, currentDiskAddress, current->getKey(0));
+      Address parentDiskNode = findParent(wholeAddress, currentDiskAddress);
 
       // KIVVVVV
       // insertInternal(current->keys[current->numKeys], parentDiskAddress, (Node *)newInternalDiskAddress.blockAddress);
@@ -672,7 +680,10 @@ void BPlusTree::remove(int value)
         }
       }
     }
-
+    std::cout << "Original Leaf Node's parent:" << std::endl;
+    displayNode(parent);
+    std::cout << "Original Leaf Node:" <<std::endl;
+    displayNode(current);
     // now that we have found the leaf node that might contain the key, we will try and find the position of the key here (if exists)
     // search if the key to be deleted exists in this bplustree
     bool found = false;
@@ -770,6 +781,10 @@ void BPlusTree::remove(int value)
       index->saveToDisk(current, sizeof(*root), currentAddress);
 
       // return numNodesDeleted;
+      std::cout << "Parent node after revome 1000" << std::endl;
+      displayNode(parent);
+      std::cout << "Leaf node after revome 1000" << std::endl;
+      displayNode(current);
       return;
     }
 
@@ -780,6 +795,9 @@ void BPlusTree::remove(int value)
     {
       // Load in left sibling from disk.
       TreeNode *leftNode = (TreeNode *)index->loadFromDisk(parent->getPointer(leftSibling), sizeof(*root));
+
+      std::cout << "Original Leaf Node's left Node" << std::endl;
+      displayNode(leftNode);
 
       // Check if we can borrow a key without underflow.
       if (leftNode->getNumOfKeys() >= (maxKeys + 1) / 2 + 1)
@@ -795,7 +813,6 @@ void BPlusTree::remove(int value)
           current->setKey(i, current->getKey(i - 1));
           current->setPointer(i, current->getPointer(i - 1));
         }
-
         // Transfer borrowed key and pointer (rightmost of left node) over to current node.
         current->setKey(0, leftNode->getKey(leftNode->getNumOfKeys() - 1));
         current->setPointer(0, leftNode->getPointer(leftNode->getNumOfKeys() - 1));
@@ -818,6 +835,13 @@ void BPlusTree::remove(int value)
         // Save current node to disk.
         Address currentAddress = {currentDiskAddress, currentDiskIndex};
         index->saveToDisk(current, sizeof(*root), currentAddress);
+
+        std::cout << "Parent node after revome 1000" << std::endl;
+        displayNode(parent);
+        std::cout << "Leaf node after revome 1000" << std::endl;
+        displayNode(current);
+        std::cout << "Leaf node's left node after revome 1000" << std::endl;
+        displayNode(leftNode);
     
         // update numNodes and numNodesDeleted after deletion
         // int numNodesDeleted = numNodes - index->getAllocated();
@@ -1080,7 +1104,7 @@ void BPlusTree::removeInternal(int value, Address currentAddress, Address childA
   // If not, we need to find the parent of this parent to get our siblings.
   // Pass in lower bound key of our child to search for it.
   Address rootNodeAddress = {rootAddress,rootIndex};
-  Address parentAddress = findParent(rootNodeAddress, currentAddress, current->getKey(0));
+  Address parentAddress = findParent(rootNodeAddress, currentAddress);
   int leftSibling, rightSibling;
 
   // Load parent into main memory.
@@ -1300,48 +1324,85 @@ void BPlusTree::removeLL(Address LLHeadAddress)
 
 // Code for find Parent node
 
-Address BPlusTree::findParent(Address currentDiskAddress, Address childDiskAddress, int value)
+Address BPlusTree::findParent(Address currentDiskAddress, Address childDiskAddress)
 {
   Address parent = currentDiskAddress;
   Address nullAddress = {nullptr, 0};
   TreeNode *current = (TreeNode *)index->loadFromDisk(currentDiskAddress, sizeof(* root));
-  if(current->getIsLeaf())
+  if (current->getIsLeaf())
   {
     return nullAddress;
   }
-  for(int i = 0; i < current->getNumOfKeys()+1; i++)
-  {
-    // std::cout << i << " Current node key: " <<  current->getKey(i) << " finding: " << value << std::endl;
-    if(current->getPointer(i).blockAddress == childDiskAddress.blockAddress && current->getPointer(i).index == childDiskAddress.index)
-    {
-      
-      parent = currentDiskAddress;
-      return parent;
-    }
-    // else
-    // {
-    //     parent = findParent(current->getPointer(i),childDiskAddress, value);
-    //     if(parent.blockAddress!=NULL)return parent;
-    // }
+  TreeNode *childNode = (TreeNode *)index->loadFromDisk(current->getPointer(0), sizeof(* root));
+  if (childNode->getIsLeaf()) {
+    return nullAddress;
   }
-  for (int i = 0; i < current->getNumOfKeys(); i++)
-  {
-    // If key is lesser than current key, go to the left pointer's node.
-    if (value < current->getKey(i))
-    {
-      // Move to new node in main memory.
-      findParent(current->getPointer(i), childDiskAddress, value);
+ 
+  // Traverse the current node with
+  // all its child
+  for (int i = 0;i < current->getNumOfKeys() + 1; i++) {
+
+    // Update the parent for the
+    // child Node
+    if (current->getPointer(i).blockAddress == childDiskAddress.blockAddress && current->getPointer(i).index == childDiskAddress.index) {
+        parent = currentDiskAddress;
+        return parent;
     }
 
-    // Else if key larger than all keys in the node, go to last pointer's node (rightmost).
-    if (i == current->getNumOfKeys() - 1)
-    {
-      // Load node in from disk to main memory.
-      findParent(current->getPointer(current->getNumOfKeys()), childDiskAddress, value);
+    // Else recursively traverse to
+    // find child node
+    else {
+      parent
+          = findParent(current->getPointer(i),
+                        childDiskAddress);
+
+      // If parent is found, then
+      // return that parent node
+      if (parent.blockAddress != NULL)
+          return parent;
+      }
     }
-  }
-  return parent;
+ 
+    // Return parent node
+    return parent;
 }
+//   if(current->getIsLeaf())
+//   {
+//     return nullAddress;
+//   }
+//   for(int i = 0; i < current->getNumOfKeys()+1; i++)
+//   {
+//     // std::cout << i << " Current node key: " <<  current->getKey(i) << " finding: " << value << std::endl;
+//     if(current->getPointer(i).blockAddress == childDiskAddress.blockAddress && current->getPointer(i).index == childDiskAddress.index)
+//     {
+      
+//       parent = currentDiskAddress;
+//       return parent;
+//     }
+//     // else
+//     // {
+//     //     parent = findParent(current->getPointer(i),childDiskAddress, value);
+//     //     if(parent.blockAddress!=NULL)return parent;
+//     // }
+//   }
+//   for (int i = 0; i < current->getNumOfKeys(); i++)
+//   {
+//     // If key is lesser than current key, go to the left pointer's node.
+//     if (value < current->getKey(i))
+//     {
+//       // Move to new node in main memory.
+//       findParent(current->getPointer(i), childDiskAddress, value);
+//     }
+
+//     // Else if key larger than all keys in the node, go to last pointer's node (rightmost).
+//     if (i == current->getNumOfKeys() - 1)
+//     {
+//       // Load node in from disk to main memory.
+//       findParent(current->getPointer(current->getNumOfKeys()), childDiskAddress, value);
+//     }
+//   }
+//   return parent;
+// }
 // {
 //     // Load in current into main memory, starting from root.
 
@@ -1407,9 +1468,24 @@ Address BPlusTree::findParent(Address currentDiskAddress, Address childDiskAddre
 
 // Code for query
 
-void BPlusTree::search(int leftValue, int rightValue)
-{
-    // Tree is empty.
+static float ratingSum;
+static int ratingCounter;
+static int ratingLeafCounter;
+
+float *BPlusTree::search(int leftValue, int rightValue)
+{ 
+  std::fstream myfile;
+  myfile.open("./search_result.txt", std::ios_base::app);
+  myfile << "\nSearch for range: " << leftValue << " >= " << "numVotes" << " <= " << rightValue << std::endl;
+  myfile.close();
+  // int *counter = new int(2);
+  static float counter[3] = {0.0, 0.0, 0.0}; // number of index node, number of data blocks accessed, average of the averageRatings
+  ratingSum = 0;
+  ratingCounter = 0;
+  ratingLeafCounter = 0;
+  counter[0] = 0;
+  counter[1] = 0;
+  // Tree is empty.
   if (rootAddress == nullptr)
   {
     throw std::logic_error("Tree is empty!");
@@ -1422,8 +1498,11 @@ void BPlusTree::search(int leftValue, int rightValue)
     root = (TreeNode *)index->loadFromDisk(rootDiskAddress, sizeof(* root));
 
     // for displaying to output file
-    std::cout << "Index node accessed. Content is -----";
-    displayNode(root);
+    counter[0] ++;
+    myfile.open("./search_result.txt", std::ios_base::app);
+    myfile << "Index node accessed. Content is -----";
+    myfile.close();
+    displayNodeFile(root);
 
     TreeNode *current = root;
 
@@ -1442,8 +1521,11 @@ void BPlusTree::search(int leftValue, int rightValue)
           current = (TreeNode *)index->loadFromDisk(current->getPointer(i), sizeof(* root));
 
           // for displaying to output file
-          std::cout << "Index node accessed. Content is -----";
-          displayNode(current);
+          counter[0] ++;
+          myfile.open("./search_result.txt", std::ios_base::app);
+          myfile << "Index node accessed. Content is -----";
+          myfile.close();
+          displayNodeFile(current);
 
           break;
         }
@@ -1455,8 +1537,11 @@ void BPlusTree::search(int leftValue, int rightValue)
           current = (TreeNode *)index->loadFromDisk(current->getPointer(i + 1), sizeof(* root));
 
           // for displaying to output file
-          std::cout << "Index node accessed. Content is -----";
-          displayNode(current);
+          counter[0] ++;
+          myfile.open("./search_result.txt", std::ios_base::app);
+          myfile << "Index node accessed. Content is -----";
+          myfile.close();
+          displayNodeFile(current);
           break;
         }
       }
@@ -1484,21 +1569,29 @@ void BPlusTree::search(int leftValue, int rightValue)
         if (current->getKey(i) >= leftValue && current->getKey(i) <= rightValue)
         {
           // for displaying to output file
-          std::cout << "Leaf Node content is -----";
-          displayNode(current);
+          myfile.open("./search_result.txt", std::ios_base::app);
+          myfile << "Leaf Node content is -----";
+          myfile.close();
+          displayNodeFile(current);
 
           // Add new line for each leaf node's linked list printout.
           // std::cout << std::endl;
-          std::cout << "LLNode: tconst for number of votes: " << current->getKey(i) << " > ";          
+          myfile.open("./search_result.txt", std::ios_base::app);
+          myfile << "LLNode: tconst for number of votes: " << current->getKey(i) << " > ";     
+          myfile.close();     
 
           // Access the linked list node and print records.
-          displayLL(current->getPointer(i));
+          displayLLFile(current->getPointer(i));
+          if (leftValue == rightValue){
+            stop = true;
+          }
         }
       }
       while (current->getKey(current->getNumOfKeys()-1)< rightValue)
       {
         Address nextNodeAddress = current->getPointer(current->getNumOfKeys());
         TreeNode *nextNode = (TreeNode *)index->loadFromDisk(nextNodeAddress, sizeof(*root));
+        ratingLeafCounter ++;
         current = nextNode;
         for (i = 0; i < current->getNumOfKeys(); i++)
         {
@@ -1511,15 +1604,18 @@ void BPlusTree::search(int leftValue, int rightValue)
           if (current->getKey(i) >= leftValue && current->getKey(i) <= rightValue)
           {
             // for displaying to output file
-            std::cout << "Leaf Node content is -----";
-            displayNode(current);
+            myfile.open("./search_result.txt", std::ios_base::app);
+            myfile << "Leaf Node content is -----";
+            myfile.close();
+            displayNodeFile(current);
 
             // Add new line for each leaf node's linked list printout.
             // std::cout << std::endl;
-            std::cout << "LLNode: tconst for number of votes: " << current->getKey(i) << " > ";          
-
+            myfile.open("./search_result.txt", std::ios_base::app);
+            myfile << "LLNode: tconst for number of votes: " << current->getKey(i) << " > ";          
+            myfile.close();
             // Access the linked list node and print records.
-            displayLL(current->getPointer(i));
+            displayLLFile(current->getPointer(i));
           }
         }
       }
@@ -1541,6 +1637,9 @@ void BPlusTree::search(int leftValue, int rightValue)
       // }
     }
   }
+  counter[1] = counter[0] + ratingCounter +ratingLeafCounter;
+  counter[2] = ratingSum/ratingCounter;
+  return counter;
 };
 
 // Code for displaying the tree
@@ -1606,6 +1705,41 @@ void BPlusTree::displayNode(TreeNode *current)
   }
 
   std::cout << std::endl;
+};
+
+void BPlusTree::displayNodeFile(TreeNode *current)
+{
+  // Print out all contents in the current node as such |pointer|key|pointer|
+  int i = 0;
+  std::ofstream myfile;
+  myfile << "|";
+  myfile.close();
+  for (int i = 0; i < current->getNumOfKeys(); i++)
+  {
+    // std::cout << current->getPointer(i).blockAddress << "" << current->getPointer(i).index << " | ";
+    myfile.open("./search_result.txt", std::ios_base::app);
+    myfile << current->getKey(i) << " | ";
+    myfile.close();
+  }
+
+  // Print last filled pointer
+  // if (current->getPointer(current->getNumOfKeys()).blockAddress == nullptr) {
+  //   std::cout << " Null |";
+  // }
+  // else {
+  //   std::cout << current->getPointer(current->getNumOfKeys()).blockAddress << "" << current->getPointer(i).index << "|";
+  // }
+
+  for (int i = current->getNumOfKeys(); i < maxKeys; i++)
+  { 
+    myfile.open("./search_result.txt", std::ios_base::app);
+    myfile << " x |";      // Remaining empty keys
+    // std::cout << "  Null  |"; // Remaining empty pointers
+    myfile.close();
+  }
+  myfile.open("./search_result.txt", std::ios_base::app);
+  myfile << std::endl;
+  myfile.close();
 };
 
 Address BPlusTree::getFirstLeaf(Address current)
@@ -1696,6 +1830,56 @@ void BPlusTree::displayLL(Address address)
   if (head->getPointer(head->getNumOfKeys()).blockAddress != nullptr)
   {
     displayLL(head->getPointer(head->getNumOfKeys()));
+  }
+}
+
+void BPlusTree::displayLLFile(Address address)
+{
+  // Load linked list head into main memory.
+  TreeNode *head = (TreeNode *)index->loadFromDisk(address, sizeof(* root));
+  std::ofstream myfile;
+  myfile.open("./search_result.txt", std::ios_base::app);
+  myfile << "\nData block accessed. Content is -----";
+  myfile.close();
+  displayNodeFile(head);
+  // std::cout << std::endl;
+  // Print all records in the linked list.
+  for (int i = 0; i < head->getNumOfKeys(); i++)
+  {
+    // Load the block from disk.
+    // void *blockMainMemoryAddress = operator new(nodeSize);
+    // std::memcpy(blockMainMemoryAddress, head->pointers[i].blockAddress, nodeSize);
+    Record result = *(Record *)(disk->loadFromDisk(head->getPointer(i), sizeof(Record)));
+
+    ratingSum += result.averageRating;
+    ratingCounter ++;
+
+    myfile.open("./search_result.txt", std::ios_base::app);
+    myfile << result.tconst << " | " << result.averageRating << " | " << result.numVotes << " | ";
+    myfile.close();
+
+  }
+
+  // // Print empty slots
+  // for (int i = head->getNumOfKeys(); i < maxKeys; i++)
+  // {
+  //   std::cout << "x | ";
+  // }
+  
+  // End of linked list
+  if (head->getPointer(head->getNumOfKeys()).blockAddress == nullptr)
+  { 
+    // std::cout << std::endl;
+    myfile.open("./search_result.txt", std::ios_base::app);
+    myfile << "End of linked list" << std::endl;
+    myfile.close();
+    return;
+  }
+
+  // Move to next node in linked list.
+  if (head->getPointer(head->getNumOfKeys()).blockAddress != nullptr)
+  {
+    displayLLFile(head->getPointer(head->getNumOfKeys()));
   }
 }
 
