@@ -53,3 +53,43 @@ def connect():
         if connect is not None:
             connect.close()
             print('Database connection closed')
+
+class Node(object):
+    def __init__(self, description, nodeType, schema, relationName, 
+                alias, children, groupKey, sortKey, joinType, indexName, 
+                hashCondition, tableFilter, indexCondition, mergeCondition, 
+                recheckCond, joinFilter, subPlanName, rows, time):
+        self.description = description
+        self.nodeType = nodeType
+        self.schema = schema
+        self.relationName = relationName
+        self.alias = alias
+        self.children = []
+        self.groupKey = groupKey
+        self.sortKey = sortKey
+        self.joinType = joinType
+        self.indexName = indexName
+        self.hashCondition = hashCondition
+        self.tableFilter = tableFilter
+        self.indexCondition = indexCondition
+        self.mergeCondition = mergeCondition
+        self.recheckCond = recheckCond
+        self.joinFilter = joinFilter
+        self.subPlanName = subPlanName
+        self.rows = rows
+        self.time = time
+
+    def append_children(self, child):
+        self.children.append(child)
+    
+    def output_QEP_name(self, output_name):
+        if "T" == output_name[0] and output_name[1:].isdigit():
+            self.output_name = int(output_name[1:])
+        else:
+            self.output_name = output_name
+    
+    def set_step(self, step):
+        self.step = step
+    
+    def update_description(self, description):
+        self.description = description
