@@ -30,8 +30,6 @@ class Annotator:
         self.stepCount += 1
         result += "Step {}: ".format(self.stepCount)
 
-        # python 3.8 has no switch function :(
-
         if query["Node Type"] == 'Seq Scan':
             table = query["Relation Name"]
             name = query["Alias"]
