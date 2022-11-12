@@ -52,4 +52,4 @@ def connect():
     finally:
         if connect is not None:
             connect.close()
-            print('Database connection clsoed')
+            print('Database connection closed')
