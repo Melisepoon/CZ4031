@@ -1,36 +1,16 @@
 import sys 
 import time
 import json
-import psycopg2 # need install
+
 from PyQt5.QtWidgets import QApplication # need install
 from qt_material import apply_stylesheet #, list_themes # need install
 from interface import *
 from annotation import *
+from preprocessing import *
 
 # extract hard coded values
 FILE_CONFIG = "config.json"
 FILE_APP_THEME = "dark_blue.xml" #list_themes()[12]
-
-
-# allow use of with syntax
-class DatabaseCursor(object):
-    def __init__(self, config):
-        self.config = config
-
-    def __enter__(self):
-        self.conn = psycopg2.connect(
-            host=self.config["host"],
-            dbname=self.config["dbname"],
-            user=self.config["user"],
-            password=self.config["pwd"],
-            port=self.config["port"]
-        )   
-        self.cur = self.conn.cursor()
-        return self.cur
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        # some logic to commit/rollback
-        self.conn.close()
 
 class Program():
     def __init__(self):
@@ -40,6 +20,7 @@ class Program():
         self.app = QApplication(sys.argv)
         apply_stylesheet(self.app, theme=FILE_APP_THEME)
         self.window = UI()
+        self.databaseCursor = DatabaseCursor()
         self.window.setOnDatabaseChanged( lambda: self.onDatabaseChanged())
         self.window.setOnAnalyseClicked( lambda: self.analyseQuery() )
 
@@ -55,7 +36,7 @@ class Program():
         cur_db = self.window.list_database.currentText()
         print(f"Current selected database is {cur_db}")
         self.db_config = self.config[cur_db]
-        self.updateSchema()
+        self.updateDatabase()
 
     def hasDbConfig(self):
         if not hasattr(self, "db_config"): 
@@ -74,45 +55,28 @@ class Program():
                 print("query is empty")
                 return
             print("query: \n%s"%query)
-            with DatabaseCursor(self.db_config) as cursor:
-                cursor.execute("EXPLAIN (FORMAT JSON) " + query)
-                plan = cursor.fetchall()
-                print("qep: \n%s"%plan)
-                plan_annotated = Annotator().wrapper(plan)[0]
-                print("annotated qep: \n%s"%plan_annotated)
-                self.window.setResult( plan_annotated )
-                image = Annotator().wrapper(plan)[1]
-                self.window.setImage(image)
-                
+
+            plan = self.databaseCursor.queryPlan(self.db_config, query)
+            result = Annotator().wrapper(plan)
+            plan_annotated = result[0]
+            print("annotated qep: \n%s"%plan_annotated)
+            self.window.setResult( plan_annotated )
+            image = result[1]
+            self.window.setImage(image)
                 
         except Exception as e:
             print(str(e))
             self.window.showError("Unable to analyse query!", e)
 
-    def updateSchema(self):
+    def updateDatabase(self):
         if not self.hasDbConfig(): 
             self.window.setSchema(None)
             self.window.showError("Database configuration is not found")
             return
         try:
-            with DatabaseCursor(self.db_config) as cursor:
-                query = "SELECT table_name, column_name, data_type, character_maximum_length as length FROM information_schema.columns WHERE table_schema='public' ORDER BY table_name, ordinal_position"
-                cursor.execute(query)
-                response = cursor.fetchall()
+            schema = self.databaseCursor.updateSchema(self.db_config)
+            self.window.setSchema(schema)
 
-                # parse response as dictionary 
-                schema = {}
-                for item in response:
-                    # cols are table_name, column_name, data_type, length (nullable)
-                    attrs = schema.get(item[0], [])
-                    attrs.append(item[1])
-                    schema[item[0]] = attrs
-                # log schema
-                print("Database schema as follow: ")
-                for t, table in enumerate(schema):
-                    print(t+1, table, schema.get(table))
-                
-                self.window.setSchema(schema)
         except Exception as e:
             print(str(e))
             self.window.showError("Unable to retrieve schema information!", e)
