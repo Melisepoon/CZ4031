@@ -7,7 +7,7 @@
                 <x>0</x>
                 <y>0</y>
                 <width>832</width>
-                <height>600</height>
+                <height>700</height>
             </rect>
         </property>
         <property name="minimumSize">
@@ -79,6 +79,12 @@
                                                 <verstretch>0</verstretch>
                                                 </sizepolicy>
                                                 </property>
+                                                <property name="minimumSize">
+                                                    <size>
+                                                        <width>300</width>
+                                                        <height>150</height>
+                                                    </size>
+                                                </property>
                                                 <property name="acceptRichText">
                                                     <bool>false</bool>
                                                 </property>
@@ -93,7 +99,7 @@
                                                             </property>
                                                         </widget>
                                                     </item>
-                                                    <item alignment="Qt::AlignTop">
+                                                    <item>
                                                         <widget class="QPushButton" name="btn_clear">
                                                             <property name="text">
                                                                 <string>Clear</string>
@@ -119,20 +125,44 @@
                                         </property>
                                         <layout class="QVBoxLayout" name="verticalLayout_2">
                                             <item alignment="Qt::AlignTop">
-                                                <widget class="QLabel" name="text_plan">
+                                                <widget class="QScrollArea" name="text_plan">
                                                 <property name="sizePolicy">
                                                 <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
                                                 <horstretch>0</horstretch>
                                                 <verstretch>0</verstretch>
                                                 </sizepolicy>
                                                 </property>
-                                                <property name="text">
+                                                <property name="minimumSize">
+                                                    <size>
+                                                        <width>300</width>
+                                                        <height>300</height>
+                                                    </size>
+                                                </property>
+                                                <!-- <property name="text">
                                                 <string/>
                                                 </property>
                                                 <property name="wordWrap">
                                                 <bool>true</bool>
-                                                </property>
+                                                </property> -->
                                                 </widget>
+                                            </item>
+                                            <item>
+                                                <layout class="QHBoxLayout">
+                                                    <item>
+                                                        <widget class="QPushButton" name="btn_back">
+                                                            <property name="text">
+                                                                <string>Back</string>
+                                                            </property>
+                                                        </widget>
+                                                    </item>
+                                                    <item>
+                                                        <widget class="QPushButton" name="btn_next">
+                                                            <property name="text">
+                                                                <string>Next</string>
+                                                            </property>
+                                                        </widget>
+                                                    </item>
+                                                </layout>
                                             </item>
                                         </layout>
                                     </widget>
@@ -141,6 +171,16 @@
                         </item>
                         <item>
                             <layout class="QVBoxLayout" name="image_layout">
+                                <item>
+                                    <widget class="QLabel" name="db_setting">
+                                        <property name="minimumSize">
+                                            <size>
+                                                <width>300</width>
+                                                <height>50</height>
+                                            </size>
+                                        </property>
+                                    </widget>
+                                </item>
                                 <item>
                                     <widget class="QScrollArea" name="image_scroll">
                                         <property name="sizePolicy">
@@ -157,19 +197,7 @@
                                         </property>
                                     </widget>
                                 </item>
-                                <!-- <item alignment="Qt::AlignCenter">
-                                    <widget class="QPushButton" name="btn_more">
-                                        <property name="text">
-                                            <string>More</string>
-                                        </property>
-                                        <property name="maximumSize">
-                                            <size>
-                                                <width>200</width>
-                                                <height>0</height>
-                                            </size>
-                                        </property>
-                                    </widget>
-                                </item> -->
+                                
                             </layout>
                         </item>
                     </layout>

@@ -7,6 +7,7 @@ class Annotator:
         self.stepCount = 0
         self.dot = Digraph()
         self.dotCounter = 1
+        self.totalCost = 0
 
     # wrapper function to do preprocessing on the qep and to only return finished string
     def wrapper(self, qep):
@@ -23,7 +24,7 @@ class Annotator:
             
         }
         image = self.dot.render('Graph')
-        return final, image
+        return final, image, self.totalCost
 
     def annotate(self, query, first = False):
         
@@ -34,6 +35,7 @@ class Annotator:
         # result string to be combined with current iter's output and returned
         result = ""
 
+        self.totalCost += query["Total Cost"]
         
         nodeName = "N" + str(self.dotCounter)
         self.dot.node(nodeName, query["Node Type"])

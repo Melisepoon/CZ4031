@@ -12,6 +12,25 @@ from preprocessing import *
 FILE_CONFIG = "config.json"
 FILE_APP_THEME = "dark_blue.xml" #list_themes()[12]
 
+settings = [
+
+        [
+            ["ENABLE_HASHJOIN","ON"],
+            ["ENABLE_MERGEJOIN","ON"],
+            ["ENABLE_SEQSCAN","ON"]
+        ],
+
+        [
+            ["ENABLE_HASHJOIN","OFF"],
+            ["ENABLE_SEQSCAN","OFF"]
+        ],
+
+        [
+            ["ENABLE_MERGEJOIN","OFF"],
+            ["ENABLE_SEQSCAN","OFF"]
+        ]
+    ]
+
 class Program():
     def __init__(self):
         with open(FILE_CONFIG, "r") as file:
@@ -19,10 +38,14 @@ class Program():
         # init ui components
         self.app = QApplication(sys.argv)
         apply_stylesheet(self.app, theme=FILE_APP_THEME)
+        self.plans = []
+        self.counter = 0
         self.window = UI()
-        self.databaseCursor = DatabaseCursor()
+        self.databaseCursor = DatabaseCursor(settings)
         self.window.setOnDatabaseChanged( lambda: self.onDatabaseChanged())
         self.window.setOnAnalyseClicked( lambda: self.analyseQuery() )
+        self.window.setOnBackClicked( lambda: self.back() )
+        self.window.setOnNextClicked( lambda: self.next() )
 
     def run(self):
         self.window.show()
@@ -44,6 +67,44 @@ class Program():
         if self.db_config == None:
             return False
         return True
+    
+    def back(self):
+        if self.plans:
+            if self.counter == 1 or self.counter == 2:
+                self.counter -= 1
+                try:
+                    result = Annotator().wrapper(self.plans[self.counter])
+                    plan_annotated = result[0]
+                    print("annotated qep: \n%s"%plan_annotated)
+                    others = []
+                    others.append(settings[self.counter])
+                    others.append(str(int(result[2])))
+                    self.window.setResult( plan_annotated, others )
+                    image = result[1]
+                    self.window.setImage(image)
+                except Exception as e:
+                    print(str(e))
+                    self.window.showError("Unable to analyse query!", e)
+
+
+
+    def next(self):
+        if self.plans:
+            if self.counter == 0 or self.counter == 1:
+                self.counter += 1
+                try:
+                    result = Annotator().wrapper(self.plans[self.counter])
+                    plan_annotated = result[0]
+                    print("annotated qep: \n%s"%plan_annotated)
+                    others = []
+                    others.append(settings[self.counter])
+                    others.append(str(int(result[2])))
+                    self.window.setResult( plan_annotated, others )
+                    image = result[1]
+                    self.window.setImage(image)
+                except Exception as e:
+                    print(str(e))
+                    self.window.showError("Unable to analyse query!", e)
 
     def analyseQuery(self):
         if not self.hasDbConfig():
@@ -56,11 +117,16 @@ class Program():
                 return
             print("query: \n%s"%query)
 
-            plan = self.databaseCursor.queryPlan(self.db_config, query)
-            result = Annotator().wrapper(plan)
+            self.plans = self.databaseCursor.queryPlan(self.db_config, query)
+            self.counter = 0
+            result = Annotator().wrapper(self.plans[self.counter])
             plan_annotated = result[0]
             print("annotated qep: \n%s"%plan_annotated)
-            self.window.setResult( plan_annotated )
+            others = []
+            others.append(settings[self.counter])
+            others.append(str(int(result[2])))
+            print(others)
+            self.window.setResult( plan_annotated, others )
             image = result[1]
             self.window.setImage(image)
                 

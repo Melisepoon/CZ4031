@@ -2,8 +2,8 @@ import psycopg2 # need install
 
 # allow use of with syntax
 class DatabaseCursor():
-    def __init__(self):
-        self.setting = []
+    def __init__(self, settings):
+        self.settings = settings
 
     def connectDatabase(self, config):
         self.conn = psycopg2.connect(
@@ -21,10 +21,16 @@ class DatabaseCursor():
         self.conn.close()
 
     def queryPlan(self, config, query):
+        plans = []
         cursor = self.connectDatabase(config)
-        cursor.execute("EXPLAIN (FORMAT JSON) " + query)
-        plan = cursor.fetchall()
-        return plan
+        for setting in self.settings:
+            for i in setting:
+                setting_string = f'SET {i[0]} to {i[1]}'
+                cursor.execute(setting_string)
+            cursor.execute("EXPLAIN (FORMAT JSON, SETTINGS ON) " + query)
+            plan = cursor.fetchall()
+            plans.append(plan)
+        return plans
 
     def updateSchema(self, config):
         cursor = self.connectDatabase(config)

@@ -11,12 +11,15 @@ class UI(QMainWindow):
         uic.loadUi("main.ui", self)
         # link to UI widgets
         self.input_sql = self.findChild(QTextEdit, "input_query")
-        self.label_qep = self.findChild(QLabel, "text_plan")
+        self.label_qep = self.findChild(QScrollArea, "text_plan")
         self.btn_analyse = self.findChild(QPushButton, "btn_analyse")
         self.btn_clear = self.findChild(QPushButton, "btn_clear")
         self.list_database = self.findChild(QComboBox, "combo_databases")
         self.tree_attrs = self.findChild(QTreeWidget, "tree_attrs")
         self.image_scroll = self.findChild(QScrollArea, "image_scroll")
+        self.btn_back = self.findChild(QPushButton, "btn_back")
+        self.btn_next = self.findChild(QPushButton, "btn_next")
+        self.db_setting = self.findChild(QLabel, "db_setting")
 
         # init widgets
         self.tree_attrs.setHeaderLabels(["Schema"])
@@ -36,11 +39,13 @@ class UI(QMainWindow):
 
     def clear(self):
         self.input_sql.setPlainText("")
-        self.label_qep.setText("")
+        text_label = QLabel()
+        text_label.setText("")
+        self.label_qep.setWidget(text_label)
         image_label = QLabel()
         image_label.setPixmap(QPixmap(None))
-
         self.image_scroll.setWidget(image_label)
+        self.db_setting.setText("")
         
     def readInput(self):
         return self.input_sql.toPlainText()
@@ -48,8 +53,20 @@ class UI(QMainWindow):
     def setInput(self, text):
         self.input_sql.setPlainText(text)
     
-    def setResult(self, text):
-        self.label_qep.setText(text)
+    def setResult(self, result, others):
+        text_label = QLabel()
+        text_label.setWordWrap(True)
+        text_label.setMinimumWidth(400)
+        text_label.setText(result)
+        # self.label_qep.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.label_qep.setWidget(text_label)
+        final_str = ""
+        for i in others[0]:
+            final_str += f'{i[0]} : {i[1]}'
+            final_str += "\n"
+        final_str += "Cost: " + str(int(others[-1]))
+        self.db_setting.setMinimumWidth(200)
+        self.db_setting.setText(final_str)
             
     def setSchema(self, schema=None):
         self.tree_attrs.clear()
@@ -84,6 +101,16 @@ class UI(QMainWindow):
         self.list_database.clear()
         self.list_database.addItems(list_db)
 
+    def setOnBackClicked(self, callback):
+        self.clear
+        if callback:
+            self.btn_back.clicked.connect(callback)
+
+    def setOnNextClicked(self, callback):
+        self.clear
+        if callback:
+            self.btn_next.clicked.connect(callback)
+
             
     # private events handling 
     def _onDatabaseChanged(self, cur_index):
@@ -93,4 +120,5 @@ class UI(QMainWindow):
     def _onSchemaItemDoubleClicked(self, item, col):
         # append item text to input text area
         self.setInput( f"{self.readInput()} {item.text(col)} ") 
+
         
