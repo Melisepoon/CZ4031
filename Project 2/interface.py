@@ -1,5 +1,7 @@
 from PyQt5 import uic
 from PyQt5.QtWidgets import *
+from PyQt5.QtGui import (QPixmap)
+from PyQt5.QtCore import Qt
 #from qt_material import apply_stylesheet
 
 class UI(QMainWindow):
@@ -14,6 +16,8 @@ class UI(QMainWindow):
         self.btn_clear = self.findChild(QPushButton, "btn_clear")
         self.list_database = self.findChild(QComboBox, "combo_databases")
         self.tree_attrs = self.findChild(QTreeWidget, "tree_attrs")
+        self.image_scroll = self.findChild(QScrollArea, "image_scroll")
+
         # init widgets
         self.tree_attrs.setHeaderLabels(["Schema"])
         self.btn_clear.clicked.connect(self.clear)
@@ -33,6 +37,10 @@ class UI(QMainWindow):
     def clear(self):
         self.input_sql.setPlainText("")
         self.label_qep.setText("")
+        image_label = QLabel()
+        image_label.setPixmap(QPixmap(None))
+
+        self.image_scroll.setWidget(image_label)
         
     def readInput(self):
         return self.input_sql.toPlainText()
@@ -53,6 +61,16 @@ class UI(QMainWindow):
                 attr_item =  QTreeWidgetItem([attr])
                 table_item.addChild(attr_item)  
             self.tree_attrs.addTopLevelItem(table_item)
+    
+    def setImage(self, image_data = None):
+        if image_data == None:
+            print("No image")
+            return
+        image_label = QLabel()
+        image_label.setPixmap(QPixmap(image_data))
+
+        self.image_scroll.setWidget(image_label)
+
             
     # callback setter
     def setOnAnalyseClicked(self, callback):

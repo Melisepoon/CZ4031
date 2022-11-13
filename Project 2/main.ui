@@ -139,6 +139,39 @@
                                 </item>
                             </layout>
                         </item>
+                        <item>
+                            <layout class="QVBoxLayout" name="image_layout">
+                                <item>
+                                    <widget class="QScrollArea" name="image_scroll">
+                                        <property name="sizePolicy">
+                                            <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                                                <horstretch>0</horstretch>
+                                                <verstretch>0</verstretch>
+                                            </sizepolicy>
+                                        </property>
+                                        <property name="minimumSize">
+                                            <size>
+                                                <width>300</width>
+                                                <height>0</height>
+                                            </size>
+                                        </property>
+                                    </widget>
+                                </item>
+                                <!-- <item alignment="Qt::AlignCenter">
+                                    <widget class="QPushButton" name="btn_more">
+                                        <property name="text">
+                                            <string>More</string>
+                                        </property>
+                                        <property name="maximumSize">
+                                            <size>
+                                                <width>200</width>
+                                                <height>0</height>
+                                            </size>
+                                        </property>
+                                    </widget>
+                                </item> -->
+                            </layout>
+                        </item>
                     </layout>
                 </item>
             </layout>

@@ -78,9 +78,12 @@ class Program():
                 cursor.execute("EXPLAIN (FORMAT JSON) " + query)
                 plan = cursor.fetchall()
                 print("qep: \n%s"%plan)
-                plan_annotated = Annotator().wrapper(plan)
+                plan_annotated = Annotator().wrapper(plan)[0]
                 print("annotated qep: \n%s"%plan_annotated)
                 self.window.setResult( plan_annotated )
+                image = Annotator().wrapper(plan)[1]
+                self.window.setImage(image)
+                
                 
         except Exception as e:
             print(str(e))
