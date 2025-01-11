@@ -49,3 +49,4 @@ The data could be downloaded via this link:
 https://www.dropbox.com/s/c04kfatnd9lrtx9/data.tsv?dl=0
 
 #### Project 2 : Connecting Query with query plans
+In this project, the objective is to integrate the SQL query with its QEP. To do so, we designed an annotated SQL query that shows how the query and its QEP are connected. The annotation will explain how different components of the query are executed by the underlying query processor and why the operators are chosen among other alternatives. Algorithms to identify and process the raw query plan output and a graphical user interface (GUI) has been implemented to visualise the results.
